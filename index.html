@@ -43,8 +43,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* hero */
 .hero{padding-block:clamp(24px,6vw,64px) clamp(32px,6vw,56px)}
 .hero h1{font-weight:800;font-size:clamp(2.6rem,9vw,6.6rem);max-width:12ch}
-.hero h1 .mov{color:var(--detail);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.hero h1 .mov{color:rgba(0,0,0,.6)}
 .hero h1 .ponto{color:#FFFFFF}
+.hero .nome{margin-top:20px;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:clamp(1.3rem,3.2vw,1.9rem);max-width:none}
+.hero .assinatura{display:block;margin-top:12px;width:min(320px,70%);height:auto}
 .hero p{margin-top:20px;max-width:52ch;color:var(--muted);font-size:clamp(1rem,2.2vw,1.2rem)}
 .timeline{margin-top:clamp(28px,5vw,52px);border:1px solid var(--line);border-radius:14px;background:rgba(36,0,44,.38);padding:14px 16px 16px}
 .tl-head{display:flex;justify-content:space-between;gap:12px;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
@@ -139,7 +141,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 <main class="wrap" id="main">
   <section class="hero">
     <h1>Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1>
-    <p>Edição de vídeo, social media, identidade visual e material impresso. Abra um cliente para ver os trabalhos feitos para ele.</p>
+    <p class="nome">Camily Schütz</p>
+    <img class="assinatura" src="assinatura.png" alt="Assinatura de Camily Schütz">
   </section>
 
   <section aria-labelledby="clientes-t">
