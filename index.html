@@ -260,9 +260,6 @@ grid.innerHTML = ORDER.map((c,i) => `
   <li style="--i:${i}">
     <button class="card" type="button" data-id="${c.id}" aria-label="Abrir ${esc(c.name)}">
       <div class="thumb" style="--a:${120+i*37}deg;--x:${(i*23)%80+10}%">
-        <span class="idx">${String(i+1).padStart(2,'0')}</span>
-        ${nVid(c) ? '<span class="rec">● VÍDEO</span>' : ''}
-        <span class="mono" aria-hidden="true">${esc(c.mono)}</span>
       </div>
       <div class="cbody">
         <h3>${esc(c.name)}</h3>
@@ -301,7 +298,7 @@ function tileHTML(w, i){
   }
   return `<figure class="tile${wide}" style="--i:${i};--r:${w.r||'16/9'}">
     <div class="art">${art}</div>
-    <figcaption class="cap"><span class="tag${video?' v':''}">${video?'VÍDEO':'DESIGN'}</span><b>${esc(w.title)}</b></figcaption>
+    <figcaption class="cap">${video?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>
   </figure>`;
 }
 
@@ -322,7 +319,6 @@ function render(c, k){
   const subs = (!k && c.children) ? `<section class="block"><h3><span class="dot o"></span>Projetos<small>${plural(c.children.length,'projeto','projetos')}</small></h3>
     <div class="subs">${c.children.map((s,i)=>`
       <button class="sub" type="button" data-go="${s.id}" style="--i:${i};--a:${120+i*50}deg">
-        <span class="m" aria-hidden="true">${esc(s.mono)}</span>
         <span><h4>${esc(s.name)}</h4><p>${esc(s.kind)}</p></span>
       </button>`).join('')}</div></section>` : '';
   const ig = item.ig ? `<a class="ig" href="https://www.instagram.com/${esc(item.ig)}/" target="_blank" rel="noopener noreferrer">@${esc(item.ig)}</a>` : '';
