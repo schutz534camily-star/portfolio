@@ -10,6 +10,9 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "portfolio-db", "database_id": "e363ea08-0ec7-45da-80eb-1a141be3d6e0" }
   ],
+  "r2_buckets": [
+    { "binding": "R2", "bucket_name": "portfolio-media-r2" }
+  ],
   "kv_namespaces": [
     { "binding": "MEDIA", "id": "3765e11e6110412eb274ce25d5d2566a" }
   ]

@@ -3,7 +3,9 @@
 import ADMIN_UI from './admin-ui.txt';
 
 const CHUNK = 20 * 1024 * 1024;          // pedaço máximo guardado por chave do KV (limite do KV: 25 MiB)
-const QUOTA = 950 * 1024 * 1024;         // margem abaixo do 1 GB grátis do KV
+const QUOTA = 950 * 1024 * 1024;         // margem abaixo do 1 GB grátis do KV (arquivos antigos)
+const R2_QUOTA = 9 * 1024 * 1024 * 1024; // margem abaixo dos 10 GB grátis do R2 (arquivos novos)
+const R2_MAX_FILE = 2 * 1024 * 1024 * 1024;
 const SESSION_SECS = 60 * 60 * 24 * 30;  // login dura 30 dias
 const PBKDF2_ITER = 100000;              // máximo permitido pelo Workers
 
@@ -29,6 +31,7 @@ async function schema(db) {
     db.prepare('CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL, ts INTEGER NOT NULL)'),
     db.prepare('CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY, name TEXT, type TEXT NOT NULL, size INTEGER NOT NULL, chunks INTEGER NOT NULL, done INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)'),
   ]);
+  try { await db.prepare("ALTER TABLE media ADD COLUMN store TEXT NOT NULL DEFAULT 'kv'").run(); } catch (e) { /* coluna já existe */ }
   schemaReady = true;
 }
 
@@ -226,9 +229,10 @@ async function loadContent(env) {
 }
 
 async function deleteMedia(env, id) {
-  const row = await env.DB.prepare('SELECT chunks FROM media WHERE id = ?').bind(id).first();
+  const row = await env.DB.prepare('SELECT chunks, store FROM media WHERE id = ?').bind(id).first();
   if (!row) return;
-  for (let i = 0; i < row.chunks; i++) await env.MEDIA.delete(`m:${id}:${i}`);
+  const bin = row.store === 'r2' ? env.R2 : env.MEDIA;
+  for (let i = 0; i < row.chunks; i++) await bin.delete(`m:${id}:${i}`);
   await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(id).run();
 }
 async function usedMediaIds(env) {
@@ -237,14 +241,16 @@ async function usedMediaIds(env) {
   for (const m of JSON.stringify(settings).matchAll(/\/media\/([a-f0-9]{16})/g)) used.add(m[1]);
   return used;
 }
-async function usedBytes(env) {
-  const r = await env.DB.prepare('SELECT COALESCE(SUM(size),0) n FROM media').first();
+async function usedBytes(env, store) {
+  const r = store
+    ? await env.DB.prepare('SELECT COALESCE(SUM(size),0) n FROM media WHERE store = ?').bind(store).first()
+    : await env.DB.prepare('SELECT COALESCE(SUM(size),0) n FROM media').first();
   return r.n;
 }
 
 /* ---------- servir arquivos (público, com suporte a Range para vídeo) ---------- */
 async function serveMedia(req, env, id) {
-  const m = await env.DB.prepare('SELECT type, size, chunks FROM media WHERE id = ? AND done = 1').bind(id).first();
+  const m = await env.DB.prepare('SELECT type, size, chunks, store FROM media WHERE id = ? AND done = 1').bind(id).first();
   if (!m) return new Response('Não encontrado', { status: 404 });
   const headers = { 'content-type': m.type, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' };
   let start = 0, end = m.size - 1, status = 200;
@@ -264,9 +270,17 @@ async function serveMedia(req, env, id) {
   (async () => {
     try {
       for (let i = first; i <= last; i++) {
+        const from = i === first ? start - i * CHUNK : 0;
+        if (m.store === 'r2') {
+          const len = i === m.chunks - 1 ? m.size - CHUNK * i : CHUNK;
+          const to = i === last ? end - i * CHUNK + 1 : len;
+          const obj = await env.R2.get(`m:${id}:${i}`, { range: { offset: from, length: to - from } });
+          if (!obj) throw new Error('pedaço ausente');
+          await w.write(new Uint8Array(await obj.arrayBuffer()));
+          continue;
+        }
         const buf = await env.MEDIA.get(`m:${id}:${i}`, 'arrayBuffer');
         if (!buf) throw new Error('pedaço ausente');
-        const from = i === first ? start - i * CHUNK : 0;
         const to = i === last ? end - i * CHUNK + 1 : buf.byteLength;
         await w.write(new Uint8Array(buf, from, to - from));
       }
@@ -404,7 +418,7 @@ export default {
       }
 
       if (path === '/api/usage' && method === 'GET') {
-        return json({ used: await usedBytes(env), quota: QUOTA });
+        return json({ used: await usedBytes(env), quota: QUOTA + (env.R2 ? R2_QUOTA : 0), r2: !!env.R2 });
       }
 
       if (path === '/api/media/init' && method === 'POST') {
@@ -412,16 +426,18 @@ export default {
         const size = Number(body.size), type = String(body.type || '');
         if (!Number.isFinite(size) || size <= 0) return fail(400, 'Arquivo vazio.');
         if (!/^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm|quicktime))$/.test(type)) return fail(400, 'Tipo de arquivo não aceito. Use JPG, PNG, WEBP, GIF, MP4 ou WEBM.');
-        if (size > 500 * 1024 * 1024) return fail(413, 'Arquivo grande demais (máximo 500 MB).');
-        const used = await usedBytes(env);
-        if (used + size > QUOTA) return fail(507, `Sem espaço: usado ${(used / 1048576).toFixed(0)} MB de ${(QUOTA / 1048576).toFixed(0)} MB. Apague arquivos antigos antes de enviar.`);
+        const store = env.R2 ? 'r2' : 'kv';
+        const maxFile = store === 'r2' ? R2_MAX_FILE : 500 * 1024 * 1024, quota = store === 'r2' ? R2_QUOTA : QUOTA;
+        if (size > maxFile) return fail(413, `Arquivo grande demais (máximo ${(maxFile / 1048576).toFixed(0)} MB).`);
+        const used = await usedBytes(env, store);
+        if (used + size > quota) return fail(507, `Sem espaço: usado ${(used / 1048576).toFixed(0)} MB de ${(quota / 1048576).toFixed(0)} MB. Apague arquivos antigos antes de enviar.`);
         const id = [...rand(8)].map(b => b.toString(16).padStart(2, '0')).join('');
-        await env.DB.prepare('INSERT INTO media (id, name, type, size, chunks, done, created) VALUES (?,?,?,?,?,0,?)').bind(id, str(body.name, 120), type, size, Math.ceil(size / CHUNK), now()).run();
+        await env.DB.prepare('INSERT INTO media (id, name, type, size, chunks, done, created, store) VALUES (?,?,?,?,?,0,?,?)').bind(id, str(body.name, 120), type, size, Math.ceil(size / CHUNK), now(), store).run();
         return json({ id, chunk: CHUNK, chunks: Math.ceil(size / CHUNK) });
       }
       let m = /^\/api\/media\/([a-f0-9]{16})\/(\d+)$/.exec(path);
       if (m && method === 'PUT') {
-        const row = await env.DB.prepare('SELECT size, chunks, done FROM media WHERE id = ?').bind(m[1]).first();
+        const row = await env.DB.prepare('SELECT size, chunks, done, store FROM media WHERE id = ?').bind(m[1]).first();
         const i = Number(m[2]);
         if (!row || row.done || i >= row.chunks) return fail(404, 'Envio inválido.');
         const buf = await req.arrayBuffer();
@@ -429,21 +445,21 @@ export default {
         if (buf.byteLength !== expect) return fail(400, 'Pedaço com tamanho errado.');
         // se o envio foi cancelado (arquivo apagado) enquanto o pedaço chegava, não grava
         if (!(await env.DB.prepare('SELECT 1 x FROM media WHERE id = ?').bind(m[1]).first())) return fail(404, 'Envio cancelado.');
-        await env.MEDIA.put(`m:${m[1]}:${i}`, buf);
+        await (row.store === 'r2' ? env.R2 : env.MEDIA).put(`m:${m[1]}:${i}`, buf);
         return json({ ok: true });
       }
       m = /^\/api\/media\/([a-f0-9]{16})\/done$/.exec(path);
       if (m && method === 'POST') {
-        const row = await env.DB.prepare('SELECT chunks FROM media WHERE id = ?').bind(m[1]).first();
+        const row = await env.DB.prepare('SELECT chunks, store FROM media WHERE id = ?').bind(m[1]).first();
         if (!row) return fail(404, 'Envio inválido.');
         // cada pedaço já foi conferido (tamanho exato) ao ser gravado; aqui só olhamos o primeiro e o último (poucas leituras, resposta rápida)
-        for (const i of new Set([0, row.chunks - 1])) if (!(await env.MEDIA.get(`m:${m[1]}:${i}`, { type: 'stream' }))) return fail(400, 'Envio incompleto, tente de novo.');
+        for (const i of new Set([0, row.chunks - 1])) if (!(await (row.store === 'r2' ? env.R2.head(`m:${m[1]}:${i}`) : env.MEDIA.get(`m:${m[1]}:${i}`, { type: 'stream' })))) return fail(400, 'Envio incompleto, tente de novo.');
         await env.DB.prepare('UPDATE media SET done = 1 WHERE id = ?').bind(m[1]).run();
         return json({ ok: true, src: `/media/${m[1]}` });
       }
       if (path === '/api/media' && method === 'GET') {
         const used = await usedMediaIds(env);
-        const rows = await env.DB.prepare('SELECT id, name, type, size, done, created FROM media ORDER BY created DESC').all();
+        const rows = await env.DB.prepare('SELECT id, name, type, size, done, created, store FROM media ORDER BY created DESC').all();
         return json({ files: rows.results.map(r => ({ ...r, used: used.has(r.id) })) });
       }
       m = /^\/api\/media\/([a-f0-9]{16})$/.exec(path);
