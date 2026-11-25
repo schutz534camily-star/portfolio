@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+Sitemap: https://portfolio.schutz534camily.workers.dev/sitemap.xml

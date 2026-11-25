@@ -305,8 +305,15 @@ async function serveMedia(req, env, id) {
 }
 
 /* ---------- roteador ---------- */
+const SEC = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'" };
+const withSec = (res) => { try { const r = new Response(res.body, res); for (const k in SEC) if (!r.headers.has(k)) r.headers.set(k, SEC[k]); return r; } catch { return res; } };
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env) { return withSec(await handle(req, env)); }
+};
+
+const handle = async (req, env) => {
+  {
     const url = new URL(req.url);
     const path = url.pathname;
     try {
@@ -316,6 +323,7 @@ export default {
         if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Método não permitido', { status: 405 });
         return serveMedia(req, env, path.slice(7).split('/')[0]);
       }
+      if (path === '/seed.json') return new Response('Não encontrado', { status: 404 });
       if (!path.startsWith('/api/')) return env.ASSETS.fetch(req);
 
       const ip = req.headers.get('cf-connecting-ip') || 'local';
@@ -366,6 +374,7 @@ export default {
         return json({ ok: true }, 200, { 'set-cookie': await startSession(env, u.id) });
       }
 
+      if (!/^\/api\/(admin-ui\.js|logout|password|content|footer|settings|usage|media)(\/|$)/.test(path)) return fail(404, 'Rota não encontrada.');
       /* ===== daqui para baixo: SOMENTE administradora autenticada ===== */
       const user = await currentUser(req, env);
       if (!user) return fail(401, 'Faça login para continuar.');
@@ -497,5 +506,5 @@ export default {
     } catch (e) {
       return fail(500, 'Erro interno. Tente novamente.');
     }
-  },
+  }
 };
