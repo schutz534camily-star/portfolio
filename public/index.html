@@ -413,7 +413,7 @@ function lookup(id){
   return null;
 }
 
-function tileHTML(w, i){
+function tileHTML(w, i, tag = true){
   const video = w.t==='video';
   const wide = video && w.r==='16/9' ? ' wide' : '';
   let art;
@@ -432,14 +432,17 @@ function tileHTML(w, i){
   }
   return `<figure class="tile${wide}${real(w)?'':' empty'}" data-wi="${curItem.works.indexOf(w)}" style="--i:${i};--r:${w.r||'16/9'}">
     <div class="art">${art}${AD()?AD().tile(curItem, curItem.works.indexOf(w)):''}</div>
-    ${w.title?`<figcaption class="cap">${video?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>`:''}
+    ${w.title?`<figcaption class="cap">${(video||!tag)?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>`:''}
   </figure>`;
 }
 
-function section(title, list, isVideo){
-  if(!list.length) return '';
-  return `<section class="block"><h3><span class="dot${isVideo?'':' o'}"></span>${title}<small>${plural(list.length,'trabalho','trabalhos')}</small></h3>
-    <div class="tiles">${list.map(tileHTML).join('')}</div></section>`;
+function section(title, list, isVideo, key, custom){
+  const ad = AD();
+  if(!list.length && !(ad && custom)) return '';
+  const inner = list.length ? `<div class="tiles">${list.map((w,i)=>tileHTML(w,i,!custom)).join('')}</div>`
+    : `<p class="pf-a pf-empty">Categoria vazia. Use os botões acima para adicionar. <em>(visível só para você)</em></p>`;
+  return `<section class="block" data-sec="${esc(key)}"><h3><span class="dot${isVideo?'':' o'}"></span>${esc(title)}<small>${plural(list.length,'trabalho','trabalhos')}</small></h3>
+    ${ad?ad.sec(curItem,key,!!custom,title):''}${inner}</section>`;
 }
 
 let curItem = null;
@@ -447,8 +450,10 @@ function render(c, k){
   const item = k || c;
   curItem = item;
   const works = vis(item.works || []);
-  const vids = works.filter(w => w.t==='video');
-  const others = works.filter(w => w.t!=='video');
+  const groups = item.groups || [];
+  const inG = w => !!w.g && groups.some(g => g.id===w.g);
+  const vids = works.filter(w => w.t==='video' && !inG(w));
+  const others = works.filter(w => w.t!=='video' && !inG(w));
   crumbs.innerHTML = `<button type="button" data-go="">Portfólio</button><span aria-hidden="true">›</span>` +
     (k ? `<button type="button" data-go="${c.id}">${esc(c.name||'Projeto')}</button><span aria-hidden="true">›</span><span aria-current="page">${esc(k.name||'Projeto')}</span>`
        : `<span aria-current="page">${esc(c.name||'Projeto')}</span>`);
@@ -464,8 +469,9 @@ function render(c, k){
     <div class="chips">${chipsHTML(item)}</div>
     ${AD()?AD().head(item, !!k):''}
     ${subs}
-    ${section('Vídeos', vids, true)}
-    ${section(vids.length ? 'Design e materiais' : 'Trabalhos', others, false)}`;
+    ${section(item.secV||'Vídeos', vids, true, 'v')}
+    ${section(item.secD||(vids.length ? 'Design e materiais' : 'Trabalhos'), others, false, 'd')}
+    ${groups.map(g => section(g.name||'Categoria', works.filter(w => w.g===g.id), false, g.id, true)).join('')}`;
 }
 
 function originClip(c){

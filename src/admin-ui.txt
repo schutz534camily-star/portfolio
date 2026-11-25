@@ -97,6 +97,9 @@ body.pf-on .rodape{padding-bottom:96px}
 .ml-row{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25)}
 .ml-th{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#000}
 .ml-tx{min-width:0;display:grid;gap:2px}.ml-tx b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem}.ml-tx small{color:var(--muted)}
+.pf-sec{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px}
+.pf-sec .pf-btn{padding:5px 12px;font-size:.78rem}
+.pf-empty{color:var(--muted);font-size:.9rem;border:1px dashed var(--line);border-radius:14px;padding:18px;margin:0}
 .pf-modal.about{width:min(920px,100%)}
 .ab-live{position:sticky;top:0;z-index:5;margin:12px 0 4px;padding:12px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(rgba(43,0,52,.85),rgba(43,0,52,.85)),#000;max-height:34vh;overflow:auto}
 .ab-live>small{display:block;color:var(--muted);font-size:.74rem;margin-bottom:8px}
@@ -1079,7 +1082,7 @@ const actions = {
     if (!hit.k || PF.key === id) PF.go(parent ? parent.id : '');
     PF.refresh(); await save(); dropMedia(ids);
   },
-  async 'add-files'(id) {
+  async 'add-files'(id, _i, _d, g) {
     const it = findItem(id); if (!it) return;
     const files = await pickFiles('image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.m4v,.webm', true); if (!files.length) return;
     it.works = it.works || [];
@@ -1094,15 +1097,15 @@ const actions = {
           up = await upload(f, pre); up.t = 'design';
         } else up = await upload(f);
         const cur = findItem(id); if (!cur) throw new Error('Não achei o card para colocar o arquivo. Atualize a página e tente de novo.');
-        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src });
+        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src, ...(g ? { g } : {}) });
         PF.refresh(); await save();
       } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao adicionar.', 'bad', 7000); }
     }
   },
-  async 'add-carousel'(id) {
+  async 'add-carousel'(id, _i, _d, g) {
     const it = findItem(id); if (!it) return;
     const r = await carouselEditor(null); if (!r) return;
-    (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images });
+    (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images, ...(g ? { g } : {}) });
     PF.refresh(); await save();
   },
   async 'crop-work'(id, i) {
@@ -1119,7 +1122,7 @@ const actions = {
   },
   async 'move-work'(id, i, d) {
     const it = findItem(id); const L = it && it.works; if (!L || !L[i]) return;
-    const grp = w => w.t === 'video'; let j = i + d;
+    const gids = new Set((it.groups || []).map(x => x.id)); const grp = w => (w.g && gids.has(w.g)) ? 'g' + w.g : w.t === 'video' ? 'v' : 'd'; let j = i + d;
     while (j >= 0 && j < L.length && grp(L[j]) !== grp(L[i])) j += d;
     if (j < 0 || j >= L.length) return;
     [L[i], L[j]] = [L[j], L[i]]; PF.refresh(); await save();
@@ -1171,14 +1174,14 @@ const actions = {
     const r = await footerEditor(PF.footer); if (!r) return;
     try { const d = await api('PUT', '/api/footer', { footer: r }); PF.footer = d.footer; PF.refresh(); toast('Rodapé salvo ✓', 'ok', 1800); } catch (e) { toast(e.message, 'bad', 6000); }
   },
-  async 'add-canva'(id) {
+  async 'add-canva'(id, _i, _d, g) {
     const it = findItem(id); if (!it) return;
     const v = await modal({ title: 'Adicionar link do Canva', ok: 'Adicionar', fields: [
       { key: 'title', label: 'Título (opcional)', max: 120 },
       { key: 'url', label: 'Link de compartilhamento do Canva', type: 'url', required: true, placeholder: 'https://canva.link/...' },
       { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: '16/9' }] }); if (!v) return;
     if (!/^https:\/\//.test(v.url)) return toast('O link precisa começar com https://', 'bad');
-    (it.works = it.works || []).push({ t: 'design', title: v.title, r: v.r, canva: v.url });
+    (it.works = it.works || []).push({ t: 'design', title: v.title, r: v.r, canva: v.url, ...(g ? { g } : {}) });
     PF.refresh(); await save();
   },
   async 'new-sub'(id) {
@@ -1219,6 +1222,32 @@ const actions = {
     const old = mediaOfWork(w); it.works.splice(i, 1);
     PF.refresh(); await save(); dropMedia(old);
   },
+  async 'new-sec'(id) {
+    const it = findItem(id); if (!it) return;
+    if ((it.groups || []).length >= 12) return toast('Limite de 12 categorias nesta página.', 'bad');
+    const v = await modal({ title: 'Nova categoria', ok: 'Criar', fields: [{ key: 'name', label: 'Nome da categoria', hint: 'Ex.: Cards, Materiais impressos…', required: true, max: 60 }] }); if (!v) return;
+    let gid; do { gid = Math.random().toString(36).slice(2, 8); } while (!/^[a-z0-9]{6}$/.test(gid) || (it.groups || []).some(g => g.id === gid));
+    (it.groups = it.groups || []).push({ id: gid, name: v.name.trim() });
+    PF.refresh(); await save();
+  },
+  async 'rename-sec'(id, _i, _d, g) {
+    const it = findItem(id); if (!it || !g) return;
+    const grp = (it.groups || []).find(x => x.id === g);
+    const vids = (it.works || []).some(w => w.t === 'video' && !((it.groups || []).some(x => x.id === w.g)));
+    const cur = grp ? grp.name : g === 'v' ? (it.secV || 'Vídeos') : (it.secD || (vids ? 'Design e materiais' : 'Trabalhos'));
+    const v = await modal({ title: 'Renomear categoria', ok: 'Salvar', fields: [{ key: 'name', label: 'Nome', value: cur, required: !!grp, max: 60, hint: grp ? '' : 'Deixe vazio para voltar ao nome padrão.' }] }); if (!v) return;
+    const name = v.name.trim();
+    if (grp) grp.name = name; else if (g === 'v') { if (name) it.secV = name; else delete it.secV; } else { if (name) it.secD = name; else delete it.secD; }
+    PF.refresh(); await save();
+  },
+  async 'del-sec'(id, _i, _d, g) {
+    const it = findItem(id); const grp = it && (it.groups || []).find(x => x.id === g); if (!grp) return;
+    const n = (it.works || []).filter(w => w.g === g).length;
+    if (!await confirmBox('Apagar a categoria "' + grp.name + '"?', n ? `Os ${n} trabalho(s) dela NÃO são apagados: voltam para a lista principal da página.` : 'Ela está vazia.', 'Apagar categoria')) return;
+    (it.works || []).forEach(w => { if (w.g === g) delete w.g; });
+    it.groups = it.groups.filter(x => x.id !== g); if (!it.groups.length) delete it.groups;
+    PF.refresh(); await save();
+  },
   async password() {
     const v = await modal({ title: 'Trocar senha', ok: 'Trocar', fields: [
       { key: 'current', label: 'Senha atual', type: 'password', required: true },
@@ -1233,7 +1262,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !actions[b.dataset.act]) return;
   e.preventDefault(); e.stopPropagation();
   const a = b.dataset.act, id = b.dataset.id, i = b.dataset.i !== undefined ? Number(b.dataset.i) : undefined, d = b.dataset.d !== undefined ? Number(b.dataset.d) : undefined;
-  actions[a](id, i, d);
+  actions[a](id, i, d, b.dataset.g);
 }, true);
 
 /* ---------- peças injetadas no site ---------- */
@@ -1245,9 +1274,11 @@ window.PF_ADMIN = {
     ${btn('add-files', '+ Foto ou vídeo', item.id, '', 'primary')}
     ${btn('add-carousel', '+ Carrossel', item.id)}
     ${btn('add-canva', '+ Link do Canva', item.id)}
+    ${btn('new-sec', '+ Nova categoria', item.id)}
     ${isSub ? '' : btn('new-sub', '+ Novo projeto (galeria)', item.id)}
     ${btn('edit-item', '✎ Editar informações', item.id)}
     ${btn('del-item', '🗑 Excluir', item.id, '', 'danger')}</div>`,
+  sec: (item, key, custom) => `<div class="pf-a pf-sec">${btn('rename-sec', '✎ Renomear', item.id, `data-g="${esc(key)}"`)}${custom ? btn('add-files', '+ Foto ou vídeo', item.id, `data-g="${esc(key)}"`) + btn('add-carousel', '+ Carrossel', item.id, `data-g="${esc(key)}"`) + btn('add-canva', '+ Link do Canva', item.id, `data-g="${esc(key)}"`) + btn('del-sec', '🗑 Apagar categoria', item.id, `data-g="${esc(key)}"`, 'danger') : ''}</div>`,
   tile: (item, i) => {
     const w = item.works[i] || {}; const car = w.t === 'carousel';
     const crop = !car && w.t !== 'video' && w.src && !w.canva;
@@ -1296,7 +1327,8 @@ pb.addEventListener('drop', async e => {
     const t = e.target.closest('.tile'); if (!t) return; e.preventDefault();
     const it = findItem(PF.key); if (!it) return; const L = it.works, from = d.i, to = Number(t.dataset.wi);
     if (Number.isNaN(to) || from === to || !L[from] || !L[to]) return;
-    if ((L[from].t === 'video') !== (L[to].t === 'video')) { toast('Vídeos ficam sempre antes dos designs. Mova dentro do mesmo grupo.', '', 4500); return; }
+    const gids = new Set((it.groups || []).map(x => x.id)); const gk = w => (w.g && gids.has(w.g)) ? 'g' + w.g : w.t === 'video' ? 'v' : 'd';
+    if (gk(L[from]) !== gk(L[to])) { toast('Só dá para mudar a ordem dentro da mesma categoria.', '', 4500); return; }
     const [m] = L.splice(from, 1); L.splice(to, 0, m); PF.refresh(); await save();
   } else {
     const t = e.target.closest('.subw'); if (!t) return; e.preventDefault();

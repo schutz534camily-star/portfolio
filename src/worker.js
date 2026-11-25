@@ -101,8 +101,10 @@ function cleanWork(w) {
   if (!w || typeof w !== 'object') throw new Error('trabalho inválido');
   const t = w.t === 'video' ? 'video' : w.t === 'carousel' ? 'carousel' : 'design';
   const out = { t, title: str(w.title, 120), r: RATIO_OK.test(w.r) ? w.r : '16/9' };
+  if (typeof w.g === 'string' && /^[a-z0-9]{1,12}$/.test(w.g)) out.g = w.g;
   if (t === 'carousel') {
-    if (!Array.isArray(w.images) || w.images.length > 40) throw new Error('carrossel inválido');
+    if (!Array.isArray(w.images)) throw new Error('carrossel inválido');
+    if (w.images.length > 200) throw new Error('Carrossel com fotos demais (máximo 200).');
     if (!w.images.every(okSrc)) throw new Error('arquivo inválido no carrossel');
     out.images = w.images;
     return out;
@@ -123,6 +125,16 @@ function cleanItem(c, nested) {
   const ig = str(c.ig, 40);
   if (ig) { if (!/^[A-Za-z0-9._]{1,40}$/.test(ig)) throw new Error('Instagram inválido'); out.ig = ig; }
   if (!nested && c.cover) { if (!SRC_OK.test(c.cover) || c.cover.includes('..')) throw new Error('capa inválida'); out.cover = c.cover; }
+  const sv = str(c.secV, 60), sd = str(c.secD, 60); if (sv) out.secV = sv; if (sd) out.secD = sd;
+  if (Array.isArray(c.groups)) {
+    if (c.groups.length > 12) throw new Error('categorias demais');
+    const seen = new Set();
+    out.groups = c.groups.map(g => {
+      const id = g && typeof g.id === 'string' ? g.id : '';
+      if (!/^[a-z0-9]{1,12}$/.test(id) || seen.has(id)) throw new Error('categoria inválida'); seen.add(id);
+      return { id, name: str(g.name, 60) };
+    });
+  }
   if (Array.isArray(c.works)) { if (c.works.length > 300) throw new Error('trabalhos demais'); out.works = c.works.map(cleanWork); }
   if (!nested && Array.isArray(c.children)) { if (c.children.length > 60) throw new Error('projetos demais'); out.children = c.children.map(k => cleanItem(k, true)); }
   return out;
