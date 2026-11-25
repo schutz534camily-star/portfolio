@@ -92,33 +92,51 @@ body.pf-on .rodape{padding-bottom:96px}
 .frow .bt{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end}
 .pf-bar,.pf-modal-bg,.pf-toasts,.pf-btn{--ink:#FFF3FC;--muted:#E8C3F2;--accent:#FFC94A;--accent-ink:#2B0034;--line:rgba(255,243,252,.24);--f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;--f-display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif}
 .pf-modal{color:#FFF3FC}
-.pf-modal.theme{width:min(760px,100%)}
-.th-sample{position:sticky;top:0;z-index:2;margin:12px 0 4px;padding:14px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(rgba(var(--veil),.92),rgba(var(--veil),.92)),#000;display:grid;gap:10px;max-height:34vh;overflow:auto}
-.th-sample .hero{display:block;padding:0}
-.th-sample .hero h1{font-size:clamp(1.8rem,6vw,3rem)}
-.th-sample .sec-head{margin:0;padding-top:8px}
-.th-sample .sec-head h2{font-size:1.2rem}
-.th-sample .card{width:100%;max-width:300px;pointer-events:none}
-.th-sample .card:hover{transform:none}
-.th-sample .thumb{aspect-ratio:16/6}
-.th-sample .rodape{padding:12px 16px!important;border-radius:12px;border:1px solid var(--line)}
-.th-sample .p-in{padding:0!important;max-width:none}
-.th-sample .p-in h2{font-size:1.5rem}
-.th-sample .crumbs button{pointer-events:none}
-.th-sample .close{pointer-events:none}
-.th-sample .sub{pointer-events:none;max-width:300px}
-.th-sample .block{margin-top:0}
+.pf-modal.theme{width:min(1060px,100%)}
 .th-grp{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
 .th-grp>b{display:block;font-family:var(--f-display);font-size:1.02rem;margin-bottom:2px}
 .th-grp>small{display:block;color:var(--muted);font-size:.8rem;margin-bottom:6px}
-.th-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(130px,1.1fr) 44px 30px;gap:8px;align-items:center;margin-top:8px}
-.th-row span{font-size:.86rem}
-.th-row select{margin-top:0!important;padding:8px 10px!important;border-radius:10px!important}
+.th-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(160px,1.1fr) 44px 30px minmax(220px,1.3fr);gap:8px 10px;align-items:center;margin-top:8px}
+.th-row>span{font-size:.86rem}
 .th-row input[type=color]{width:44px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,.35);cursor:pointer}
 .th-row .pf-btn{padding:4px 0;justify-content:center;font-size:.8rem}
 .th-row.set>span:first-child::after{content:" •";color:var(--accent)}
-.th-row .sp{grid-column:span 1}
-@media (max-width:560px){.th-row{grid-template-columns:1fr 44px 30px}.th-row select{grid-column:1/3}.th-row span{grid-column:1/-1}}
+.th-pv{--ink:var(--ink-live);--muted:var(--muted-live);--accent:var(--accent-live);--line:rgba(var(--line-rgb),.24);min-height:46px;display:flex;align-items:center;padding:8px 12px;border:1px solid rgba(255,243,252,.18);border-radius:10px;background:#1c0023;overflow:hidden;color:#FFF3FC;font-family:var(--f-body)}
+.th-pv>*{min-width:0;max-width:100%}
+.th-pv .hero{display:block;padding:0}
+.th-pv .hero h1{font-size:1.45rem;max-width:none;line-height:1.1}
+.th-pv .sec-head{margin:0;padding:0;border:0}
+.th-pv .sec-head h2{font-size:1.15rem}
+.th-pv .card{pointer-events:none;width:100%;height:auto}
+.th-pv .card:hover{transform:none}
+.th-pv .cbody{padding:8px 12px;gap:2px;flex:none}
+.th-pv .cbody h3{font-size:1.05rem}
+.th-pv .thumb{aspect-ratio:16/4}
+.th-pv .chips{margin:0;padding:0}
+.th-pv .p-in{padding:0!important;max-width:none}
+.th-pv .lead{margin:0!important;font-size:.92rem!important}
+.th-pv .ig{margin:0;pointer-events:none}
+.th-pv .block{margin:0}
+.th-pv .block>h3{margin:0;padding:0;border:0}
+.th-pv .cap{margin:0}
+.th-pv .sub{pointer-events:none;padding:8px 12px;width:100%}
+.th-pv .sub:hover{transform:none}
+.th-pv .crumbs{width:100%;pointer-events:none}
+.th-pv .close{margin-left:auto;padding:3px 10px;font-size:.78rem}
+.th-pv .rodape{width:100%;padding:10px 14px!important;border-radius:10px;border:1px solid rgba(255,243,252,.2)}
+.th-pv .contatos{margin:0}
+.fp{position:relative;min-width:0}
+.fp-btn{width:100%;text-align:left;padding:8px 32px 8px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:#FFF3FC;font-size:1rem;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp-btn::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);opacity:.7}
+.fp-btn:hover,.fp.open .fp-btn{border-color:var(--accent)}
+.fp-list{position:absolute;left:0;min-width:100%;width:max(100%,260px);max-height:300px;overflow:auto;z-index:20;background:#2b0034;border:1px solid var(--accent);border-radius:12px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.fp-list[hidden]{display:none}
+.fp-list>b{display:block;font-family:var(--f-body);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 8px 2px}
+.fp-it{display:block;width:100%;text-align:left;border:0;background:none;color:#FFF3FC;padding:6px 10px;border-radius:8px;font-size:1.15rem;line-height:1.25;cursor:pointer}
+.fp-it:hover,.fp-it:focus-visible{background:rgba(255,201,74,.18);outline:none}
+.fp-it.on{background:rgba(255,201,74,.3)}
+.fp-it.def{font-family:var(--f-body);font-size:.95rem}
+@media (max-width:760px){.th-row{grid-template-columns:minmax(0,1fr) 44px 30px}.th-row>span:first-child{grid-column:1/-1}.th-row .fp{grid-column:1/3}.th-pv{grid-column:1/-1}}
 `;
 document.head.append(st);
 document.body.classList.add('pf-on');
@@ -706,23 +724,71 @@ const toHex = v => {
   const m = /^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$/.exec(v) || /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(v);
   return m ? '#' + [m[1], m[2], m[3]].map(n => Number(n).toString(16).padStart(2, '0')).join('').toUpperCase() : '#000000';
 };
+const SYSF = { 'Arial': 'Arial,Helvetica,sans-serif', 'Verdana': 'Verdana,Geneva,sans-serif', 'Tahoma': 'Tahoma,Geneva,sans-serif', 'Trebuchet MS': '"Trebuchet MS",Helvetica,sans-serif', 'Georgia': 'Georgia,serif', 'Times New Roman': '"Times New Roman",Times,serif', 'Courier New': '"Courier New",Courier,monospace', 'Impact': 'Impact,Haettenschweiler,sans-serif' };
+const fontName = v => (v || '').replace(/^[gs]:/, '').replace(/\|.*$/, '');
+const fontCss = v => !v ? '' : v[0] === 's' ? (SYSF[fontName(v)] || 'sans-serif') : `'${fontName(v)}',system-ui,sans-serif`;
+/* mostra o nome de cada fonte escrito na própria fonte (baixa só as letras do nome: leve) */
+function loadPreviewFont(v) {
+  if (!v || v[0] !== 'g') return;
+  const n = fontName(v); if (['Bricolage Grotesque', 'Figtree'].includes(n)) return;
+  if (document.querySelector(`link[data-pf-prev="${n}"]`) || [...document.querySelectorAll('link[data-pf-font]')].some(l => l.href.includes('family=' + n.replace(/ /g, '+') + ':'))) return;
+  const l = document.createElement('link'); l.rel = 'stylesheet'; l.setAttribute('data-pf-prev', n);
+  l.href = 'https://fonts.googleapis.com/css2?family=' + n.replace(/ /g, '+') + ':wght@400&text=' + encodeURIComponent(n) + '&display=swap'; document.head.append(l);
+}
+const PV = {
+  hero: '<section class="hero"><h1>Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1></section>',
+  sec: '<div class="sec-head"><h2>Clientes e projetos</h2></div>',
+  card: '<div class="card"><div class="cbody"><h3>Nome do card</h3></div></div>',
+  kind: '<p class="kind">Subtítulo do card</p>',
+  chip: '<div class="chips"><span class="chip v">▶ 3 vídeos</span><span class="chip">5 designs</span></div>',
+  cardbg: '<div class="card"><div class="cbody"><h3>Nome do card</h3><p class="kind">Subtítulo do card</p></div></div>',
+  grad: '<div class="card"><div class="thumb"></div></div>',
+  ig: '<a class="ig">@seuinstagram</a>',
+  lead: '<div class="p-in"><p class="lead">Texto de descrição dentro da página.</p></div>',
+  blk: '<div class="block"><h3><span class="dot"></span>Vídeos</h3></div>',
+  cap: '<div class="cap"><b>Legenda do trabalho</b><span class="tag v">VÍDEO</span></div>',
+  sub: '<div class="sub"><span><h4>Nome do subprojeto</h4><p>Descrição curta</p></span></div>',
+  nav: '<nav class="crumbs"><button type="button">Portfólio</button><span>›</span><span aria-current="page">Página</span><span class="close">Fechar ✕</span></nav>',
+  foot: '<footer class="rodape"><ul class="contatos"><li><span>Contato do rodapé</span></li></ul></footer>',
+  disp: '<h3 style="font-family:var(--f-display);font-size:1.2rem;margin:0;color:var(--ink-live)">Título de exemplo</h3>',
+  body: '<p style="font-family:var(--f-body);margin:0;color:var(--ink-live)">Texto de exemplo para ler.</p>',
+  ink: '<p style="margin:0;color:var(--ink-live)">Texto principal do site</p>',
+  muted: '<p style="margin:0;color:var(--muted-live)">Texto secundário do site</p>',
+  acc: '<span style="display:inline-flex;gap:10px;align-items:center;color:var(--accent-live)"><i style="width:12px;height:12px;border-radius:50%;background:var(--accent-live)"></i><u>link em destaque</u><span style="border:2px solid var(--accent-live);border-radius:99px;padding:1px 10px;font-size:.8rem">Fechar ✕</span></span>',
+  det: '<span style="display:inline-flex;gap:10px;align-items:center"><span class="chip v">▶ 3 vídeos</span><span style="width:24px;height:24px;border-radius:50%;background:var(--detail);border:1px solid rgba(255,243,252,.4)"></span></span>',
+  line: '<div style="width:100%;border:1px solid rgba(var(--line-rgb),.24);border-radius:8px;padding:6px 10px;font-size:.85rem">Borda e linhas</div>',
+  veil: '<div style="width:100%;border-radius:8px;padding:10px;font-size:.85rem;background:linear-gradient(rgba(var(--veil),.8),rgba(var(--veil),.8)),linear-gradient(90deg,#c0a,#0ad,#fa0)">Fundo do site sobre a foto</div>'
+};
+const PV_OF = { f_display: 'disp', f_body: 'body', c_ink: 'ink', c_muted: 'muted', c_accent: 'acc', c_detail: 'det', c_line: 'line', c_veil: 'veil', f_hero: 'hero', c_hero: 'hero', c_mov: 'hero', c_dot: 'hero', f_sec: 'sec', c_sec: 'sec', f_card: 'card', c_card: 'card', f_kind: 'kind', c_kind: 'kind', f_chip: 'chip', c_chip: 'chip', c_cardbg: 'cardbg', c_g1: 'grad', c_g2: 'grad', f_ig: 'ig', c_ig: 'ig', f_lead: 'lead', c_lead: 'lead', f_blk: 'blk', c_blk: 'blk', f_cap: 'cap', c_cap: 'cap', f_sub: 'sub', c_sub: 'sub', f_nav: 'nav', c_nav: 'nav', f_foot: 'foot', c_foot: 'foot', c_f1: 'foot', c_f2: 'foot' };
+/* seletor de fonte: cada opção aparece escrita na própria fonte */
+function fontPicker(onPick, state) {
+  const wrap = document.createElement('div'); wrap.className = 'fp';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'fp-btn';
+  const list = document.createElement('div'); list.className = 'fp-list'; list.hidden = true;
+  const add = (label, val, css, cls) => { const it = document.createElement('button'); it.type = 'button'; it.className = 'fp-it' + (cls ? ' ' + cls : ''); it.textContent = label; if (css) it.style.fontFamily = css; it.dataset.v = val; it.onclick = () => { close(); onPick(val); }; list.append(it); return it; };
+  add('Padrão do site', '', '', 'def');
+  for (const [gname, fl] of GFONTS) { const h = document.createElement('b'); h.textContent = gname; list.append(h); for (const [n, w] of fl) { const v = fontVal(n, w); add(n, v, fontCss(v)); } }
+  const close = () => { list.hidden = true; wrap.classList.remove('open'); state.open = null; document.removeEventListener('mousedown', away, true); };
+  const away = e => { if (!wrap.contains(e.target)) close(); };
+  const open = () => {
+    if (state.open && state.open !== close) state.open();
+    list.hidden = false; wrap.classList.add('open'); state.open = close; document.addEventListener('mousedown', away, true);
+    for (const it of list.querySelectorAll('.fp-it')) loadPreviewFont(it.dataset.v);
+    const r = btn.getBoundingClientRect(); const up = innerHeight - r.bottom < 320 && r.top > innerHeight - r.bottom;
+    list.style.top = up ? 'auto' : 'calc(100% + 4px)'; list.style.bottom = up ? 'calc(100% + 4px)' : 'auto';
+    const on = list.querySelector('.fp-it.on'); if (on) on.scrollIntoView({ block: 'center' });
+  };
+  btn.onclick = () => list.hidden ? open() : close();
+  wrap.set = v => { btn.textContent = v ? fontName(v) : 'Padrão do site'; btn.style.fontFamily = v ? fontCss(v) : ''; if (v) loadPreviewFont(v); list.querySelectorAll('.fp-it').forEach(i => i.classList.toggle('on', i.dataset.v === (v || ''))); };
+  wrap.close = close;
+  wrap.append(btn, list); return wrap;
+}
 function themeEditor(current) {
   return new Promise(resolve => {
     const sh = shell('wide theme'); const box = sh.box;
-    const theme = { ...(current || {}) };
+    const theme = { ...(current || {}) }; const pstate = { open: null };
     const h = document.createElement('h3'); h.textContent = 'Aparência do site'; box.append(h);
-    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Escolha a fonte e a cor de cada coisa. A prévia embaixo muda na hora e o site de trás também. O ponto • marca o que você personalizou; ↺ volta ao padrão daquele item.'; box.append(p0);
-    const sample = document.createElement('div'); sample.className = 'th-sample';
-    sample.innerHTML = `<section class="hero"><h1>Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1></section>
-      <nav class="crumbs"><button type="button">Início</button> / <span aria-current="page">Página aberta</span> <span style="flex:1"></span><span class="close">Fechar ✕</span></nav>
-      <div class="sec-head"><h2>Clientes e projetos</h2></div>
-      <div class="card"><div class="thumb"></div><div class="cbody"><h3>Nome do card</h3><p class="kind">Subtítulo do card</p><div class="chips"><span class="chip v">▶ 3 vídeos</span><span class="chip">5 designs</span></div></div></div>
-      <div class="p-in"><h2>Título da página</h2><a class="ig">@seuinstagram</a><p class="lead">Texto de descrição que aparece dentro da página.</p></div>
-      <div class="block"><h3>Vídeos</h3></div>
-      <div class="cap"><b>Legenda do trabalho</b><span class="tag v">VÍDEO</span></div>
-      <div class="sub"><span class="m">AB</span><div><h4>Nome do subprojeto</h4><p>Descrição curta</p></div></div>
-      <footer class="rodape"><ul class="contatos"><li><span>Contato do rodapé</span></li></ul></footer>`;
-    box.append(sample);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Do lado de cada item você vê como ele está ficando, e muda na hora (o site de trás também). O ponto • marca o que você personalizou; ↺ volta ao padrão daquele item.'; box.append(p0);
     const rows = [];
     const live = () => { PF.applyTheme(theme); rows.forEach(r => r.sync()); };
     for (const [title, hint, items] of THEME_GROUPS) {
@@ -735,22 +801,19 @@ function themeEditor(current) {
         const reset = mkBtn('↺', '', () => { delete theme[key]; live(); }); reset.title = 'Voltar ao padrão deste item';
         let inp;
         if (key[0] === 'f') {
-          inp = document.createElement('select');
-          const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Padrão do site'; inp.append(o0);
-          for (const [gname, list] of GFONTS) { const og = document.createElement('optgroup'); og.label = gname; for (const [n, w] of list) { const o = document.createElement('option'); o.value = fontVal(n, w); o.textContent = n; og.append(o); } inp.append(og); }
-          inp.onchange = () => { if (inp.value) theme[key] = inp.value; else delete theme[key]; live(); };
+          inp = fontPicker(v => { if (v) theme[key] = v; else delete theme[key]; live(); }, pstate);
           r.append(inp, document.createElement('span'));
         } else {
           inp = document.createElement('input'); inp.type = 'color';
           inp.oninput = () => { theme[key] = inp.value.toUpperCase(); live(); };
-          const hex = document.createElement('span'); hex.className = 'sp'; hex.style.opacity = '.7';
-          r.append(hex, inp);
-          r.hexEl = hex;
+          const hex = document.createElement('span'); hex.style.opacity = '.7';
+          r.append(hex, inp); r.hexEl = hex;
         }
         r.append(reset);
+        const pv = document.createElement('div'); pv.className = 'th-pv'; pv.innerHTML = PV[PV_OF[key]] || ''; r.append(pv);
         r.sync = () => {
           const set = !!theme[key]; r.classList.toggle('set', set); reset.disabled = !set; reset.style.opacity = set ? 1 : .35;
-          if (key[0] === 'f') { if (![...inp.options].some(o => o.value === theme[key])) inp.value = ''; else inp.value = theme[key] || ''; }
+          if (key[0] === 'f') inp.set(theme[key] || '');
           else { const eff = set ? theme[key] : toHex(getComputedStyle(document.documentElement).getPropertyValue(T_VAR[key]) || THEME_DEFAULT[key] || ''); inp.value = toHex(eff).toLowerCase(); r.hexEl.textContent = toHex(eff); }
         };
         rows.push(r); g.append(r);
@@ -758,8 +821,8 @@ function themeEditor(current) {
       box.append(g);
     }
     const err = document.createElement('div'); err.className = 'err'; box.append(err);
-    const done = v => { if (!v) PF.applyTheme(current || {}); sh.close(); resolve(v); };
-    sh.ent.cancel = () => done(null);
+    const done = v => { if (!v) PF.applyTheme(current || {}); document.querySelectorAll('link[data-pf-prev]').forEach(l => l.remove()); sh.close(); resolve(v); };
+    sh.ent.cancel = () => { if (pstate.open) pstate.open(); else done(null); };
     const all = mkBtn('Restaurar tudo ao padrão', 'danger', async () => { if (!Object.keys(theme).length) return; if (!await confirmBox('Voltar tudo ao padrão?', 'Todas as fontes e cores voltam ao visual original. Você ainda pode cancelar antes de salvar.', 'Voltar ao padrão')) return; for (const k of Object.keys(theme)) delete theme[k]; live(); });
     const ok = mkBtn('Salvar aparência', 'primary', null, 'submit');
     const rw = row(all, mkBtn('Cancelar', '', () => done(null)), ok); rw.style.justifyContent = 'space-between'; box.append(rw);
