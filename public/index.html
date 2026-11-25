@@ -328,7 +328,7 @@ function renderAbout(){
   const tools = $('#about-tools'), wrap = $('#about-wrap'), inner = $('#about-in');
   if(!tools) return;
   if(!has && !adm){ tools.innerHTML = ''; inner.innerHTML = ''; wrap.classList.remove('open'); wrap.inert = true; aboutOpen = false; return; }
-  tools.innerHTML = `<button type="button" class="about-btn" id="about-btn" aria-expanded="${aboutOpen}" aria-controls="about-wrap">${esc(a.label || 'Sobre mim')}${has?'':'<small>vazio · só você vê</small>'}</button>${AD()?AD().about():''}`;
+  tools.innerHTML = `<button type="button" class="about-btn" id="about-btn" aria-expanded="${aboutOpen}" aria-controls="about-wrap">${esc(a.label || 'Sobre mim')}</button>${AD()?AD().about():''}`;
   inner.innerHTML = aboutCardHTML(a);
   wrap.classList.toggle('open', aboutOpen); wrap.inert = !aboutOpen;
 }

@@ -6,6 +6,8 @@ const CHUNK = 20 * 1024 * 1024;          // pedaço máximo guardado por chave d
 const QUOTA = 950 * 1024 * 1024;         // margem abaixo do 1 GB grátis do KV (arquivos antigos)
 const R2_QUOTA = 9 * 1024 * 1024 * 1024; // margem abaixo dos 10 GB grátis do R2 (arquivos novos)
 const R2_MAX_FILE = 2 * 1024 * 1024 * 1024;
+const R2_HARD = 50 * 1024 * 1024 * 1024;  // teto absoluto, mesmo com confirmação
+const R2_PRICE_GB = 0.015;                 // US$ por GB-mês acima do grátis
 const SESSION_SECS = 60 * 60 * 24 * 30;  // login dura 30 dias
 const PBKDF2_ITER = 100000;              // máximo permitido pelo Workers
 
@@ -427,10 +429,19 @@ export default {
         if (!Number.isFinite(size) || size <= 0) return fail(400, 'Arquivo vazio.');
         if (!/^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm|quicktime))$/.test(type)) return fail(400, 'Tipo de arquivo não aceito. Use JPG, PNG, WEBP, GIF, MP4 ou WEBM.');
         const store = env.R2 ? 'r2' : 'kv';
-        const maxFile = store === 'r2' ? R2_MAX_FILE : 500 * 1024 * 1024, quota = store === 'r2' ? R2_QUOTA : QUOTA;
+        const maxFile = store === 'r2' ? R2_MAX_FILE : 500 * 1024 * 1024;
         if (size > maxFile) return fail(413, `Arquivo grande demais (máximo ${(maxFile / 1048576).toFixed(0)} MB).`);
         const used = await usedBytes(env, store);
-        if (used + size > quota) return fail(507, `Sem espaço: usado ${(used / 1048576).toFixed(0)} MB de ${(quota / 1048576).toFixed(0)} MB. Apague arquivos antigos antes de enviar.`);
+        if (store === 'kv') {
+          if (used + size > QUOTA) return fail(507, `Sem espaço: usado ${(used / 1048576).toFixed(0)} MB de ${(QUOTA / 1048576).toFixed(0)} MB. Apague arquivos antigos antes de enviar.`);
+        } else {
+          const free = Number(env.R2_FREE_LIMIT) || R2_QUOTA, after = used + size;
+          if (after > R2_HARD) return fail(507, 'Passaria do teto de 50 GB do site. Apague arquivos antes de enviar.');
+          if (after > free && body.confirmOver !== true) {
+            const gb = n => n / 1073741824, extra = Math.ceil(Math.max(0, gb(after) - 10));
+            return fail(409, 'Este envio passa dos 10 GB grátis do R2.', { needsConfirm: true, used, after, free, extraGb: extra, costMonth: +(extra * R2_PRICE_GB).toFixed(2) });
+          }
+        }
         const id = [...rand(8)].map(b => b.toString(16).padStart(2, '0')).join('');
         await env.DB.prepare('INSERT INTO media (id, name, type, size, chunks, done, created, store) VALUES (?,?,?,?,?,0,?,?)').bind(id, str(body.name, 120), type, size, Math.ceil(size / CHUNK), now(), store).run();
         return json({ id, chunk: CHUNK, chunks: Math.ceil(size / CHUNK) });

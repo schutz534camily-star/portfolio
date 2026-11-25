@@ -371,7 +371,17 @@ async function sendBlob(blob, name, type, label) {
   const cancelP = new Promise((_, rej) => { cancelRej = rej; }); cancelP.catch(() => {});
   const p = progress(label || 'Enviando ' + name + '…', () => { cancelled = true; try { if (xhr) xhr.abort(); } catch (e) {} cancelRej(stop()); }); uploading++;
   try {
-    initP = api('POST', '/api/media/init', { name, type, size: blob.size }); initP.catch(() => {});
+    const askInit = async () => {
+      try { return await api('POST', '/api/media/init', { name, type, size: blob.size }); }
+      catch (e) {
+        if (!(e.status === 409 && e.data && e.data.needsConfirm)) throw e;
+        const d = e.data, g = n => (n / 1073741824).toFixed(1).replace('.', ',');
+        const okk = await confirmBox('Passa dos 10 GB grátis', `Depois deste envio o site terá ${g(d.after)} GB. Os primeiros 10 GB são grátis e o que passar é cobrado pela Cloudflare: US$ 0,015 por GB por mês. Com este arquivo o custo estimado é de cerca de US$ ${d.costMonth.toFixed(2).replace('.', ',')} por mês (${d.extraGb} GB a mais). Quer enviar mesmo assim?`, 'Enviar e pagar');
+        if (!okk) throw Object.assign(new Error('Envio cancelado.'), { cancelled: true });
+        return api('POST', '/api/media/init', { name, type, size: blob.size, confirmOver: true });
+      }
+    };
+    initP = askInit(); initP.catch(() => {});
     const init = await Promise.race([initP, cancelP]); id = init.id;
     let sent = 0;
     for (let i = 0; i < init.chunks; i++) {
