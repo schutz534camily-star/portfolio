@@ -141,7 +141,14 @@ async function reload() {
   const r = await (await fetch('/api/content', { cache: 'no-store' })).json();
   PF.setClients(r.clients, r.rev, r.footer);
 }
+function allMediaInUse() {
+  const used = new Set(); const add = v => mediaOf(v).forEach(x => used.add(x));
+  const addW = w => { add(w.src); (w.images || []).forEach(add); };
+  for (const c of PF.clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
+  return used;
+}
 async function dropMedia(ids) {
+  const inUse = allMediaInUse(); ids = ids.filter(id => !inUse.has(id));
   for (const id of ids) { try { await api('DELETE', '/api/media/' + id); } catch (e) {} }
   usage();
 }
@@ -408,6 +415,52 @@ const igClean = v => v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\
 const findItem = id => { const h = PF.lookup(id); return h ? (h.k || h.c) : null; };
 const parentList = id => { const h = PF.lookup(id); if (!h) return null; return h.k ? { list: h.c.children, parent: h.c } : { list: PF.clients, parent: null }; };
 
+/* ---------- fotos que já estão no portfólio ---------- */
+function portfolioPhotos() {
+  const seen = new Set(), groups = [];
+  const add = (g, src) => { if (src && !seen.has(src) && !/\.(mp4|webm|mov|m4v)$/i.test(src)) { seen.add(src); g.photos.push(src); } };
+  for (const c of PF.clients) {
+    for (const it of [c, ...(c.children || [])]) {
+      const g = { name: (it === c ? c.name : (c.name ? c.name + ' › ' : '') + it.name) || 'Sem nome', photos: [] };
+      if (it === c) add(g, c.cover);
+      for (const w of it.works || []) { if (w.canva) continue; if (w.t === 'carousel') (w.images || []).forEach(u => add(g, u)); else if (w.t !== 'video') add(g, w.src); }
+      if (g.photos.length) groups.push(g);
+    }
+  }
+  return groups;
+}
+function photoPicker(taken) {
+  return new Promise(resolve => {
+    const sh = shell('wide'); const box = sh.box; const chosen = [];
+    const h = document.createElement('h3'); h.textContent = 'Fotos que já estão no portfólio'; box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Clique nas fotos que quer colocar no carrossel. A ordem em que você clica é a ordem no carrossel. A foto original continua onde está.'; box.append(p0);
+    const groups = portfolioPhotos();
+    if (!groups.length) { const e = document.createElement('p'); e.className = 'msg'; e.textContent = 'Ainda não há fotos no portfólio.'; box.append(e); }
+    const ok = mkBtn('Adicionar', 'primary', null, 'submit'); const count = () => { ok.textContent = chosen.length ? `Adicionar ${chosen.length} foto${chosen.length > 1 ? 's' : ''}` : 'Adicionar'; ok.disabled = !chosen.length; };
+    for (const g of groups) {
+      const t = document.createElement('div'); t.className = 'crop-hint'; t.style.textAlign = 'left'; t.style.marginTop = '16px'; t.style.fontWeight = '600'; t.textContent = g.name; box.append(t);
+      const grid = document.createElement('div'); grid.className = 'slides';
+      for (const src of g.photos) {
+        const el = document.createElement('div'); el.className = 'slide'; const im = document.createElement('div'); im.className = 'im'; im.style.aspectRatio = '1/1'; im.style.cursor = 'pointer';
+        const img = document.createElement('img'); img.src = src; img.loading = 'lazy'; const num = document.createElement('em'); num.hidden = true; im.append(img, num);
+        if (taken.has(src)) { im.style.opacity = '.35'; im.style.cursor = 'not-allowed'; im.title = 'Já está neste carrossel'; }
+        else im.onclick = () => {
+          const k = chosen.indexOf(src);
+          if (k >= 0) chosen.splice(k, 1); else chosen.push(src);
+          box.querySelectorAll('.slide .im').forEach(x => { const i2 = chosen.indexOf(x.firstChild.getAttribute('src')); x.parentNode.classList.toggle('sel', i2 >= 0); x.lastChild.hidden = i2 < 0; x.lastChild.textContent = i2 + 1; });
+          count();
+        };
+        el.append(im); grid.append(el);
+      }
+      box.append(grid);
+    }
+    const done = v => { sh.close(); resolve(v); };
+    sh.ent.cancel = () => done(null);
+    box.append(row(mkBtn('Cancelar', '', () => done(null)), ok)); count();
+    box.onsubmit = e => { e.preventDefault(); done(chosen); };
+  });
+}
+
 /* ---------- editor de carrossel ---------- */
 /* work = null (novo) ou o trabalho existente. Devolve { title, ratio, images:[endereços] } ou null */
 function carouselEditor(work) {
@@ -423,8 +476,9 @@ function carouselEditor(work) {
     for (const [v, l] of RATIOS) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === ratio) o.selected = true; sel.append(o); }
     if (![...sel.options].some(o => o.value === ratio)) { const o = document.createElement('option'); o.value = ratio; o.textContent = ratio.replace('/', ':'); o.selected = true; sel.prepend(o); }
     box.append(mkLabel('Formato das fotos do carrossel', 'Todas as fotos usam o mesmo formato (como no Instagram). O mais comum é 4:5 ou quadrado.', sel));
-    const addBtn = mkBtn('+ Adicionar fotos', 'primary');
-    const bar = document.createElement('div'); bar.style.marginTop = '14px'; bar.append(addBtn); box.append(bar);
+    const addBtn = mkBtn('+ Adicionar fotos do computador', 'primary');
+    const libBtn = mkBtn('Usar fotos que já estão no portfólio');
+    const bar = document.createElement('div'); bar.style.cssText = 'margin-top:14px;display:flex;gap:10px;flex-wrap:wrap'; bar.append(addBtn, libBtn); box.append(bar);
     const list = document.createElement('div'); list.className = 'slides'; box.append(list);
     const vwrap = document.createElement('div'); box.append(vwrap);
     const err = document.createElement('div'); err.className = 'err'; box.append(err);
@@ -470,7 +524,7 @@ function carouselEditor(work) {
     async function recrop(s) {
       const source = s.file || s.src;
       const r = await cropDialog({ source: s.blob ? s.url : source, ratio, fixed: true, kind: 'carousel', title: 'Recortar foto do carrossel' }); if (!r) return;
-      s.blob = r; s.url = URL.createObjectURL(r.blob); draw();
+      s.blob = r; s.url = URL.createObjectURL(r.blob); s.recrop = false; draw();
     }
     sel.onchange = () => {
       if (slides.some(s => s.blob || s.src)) toast('Formato mudou: as fotos foram recentralizadas. Use ✂ para ajustar cada uma.', '', 5000);
@@ -487,6 +541,15 @@ function carouselEditor(work) {
       draw();
     };
 
+    libBtn.onclick = async () => {
+      const picked = await photoPicker(new Set(slides.map(s => s.src).filter(Boolean))); if (!picked || !picked.length) return;
+      for (const src of picked) {
+        const s = { id: ++uid, src, url: src, file: null, blob: null, gif: false, recrop: false };
+        try { const im = await loadImg(src); s.recrop = Math.abs(Math.log((im.naturalWidth / im.naturalHeight) / ratioNum(ratio))) > .03; } catch (e) {}
+        slides.push(s);
+      }
+      draw();
+    };
     const done = v => { sh.close(); resolve(v); };
     sh.ent.cancel = () => done(null);
     const ok = mkBtn('Salvar carrossel', 'primary', null, 'submit');
@@ -496,9 +559,9 @@ function carouselEditor(work) {
       if (!slides.length) { err.textContent = 'Adicione pelo menos uma foto.'; return; }
       ok.disabled = true; ok.textContent = 'Enviando…';
       try {
-        const images = []; let n = 0; const total = slides.filter(s => s.file || s.blob || (ratioChanged && s.src)).length;
+        const images = []; let n = 0; const need = s => s.file || s.blob || s.recrop || (ratioChanged && s.src); const total = slides.filter(need).length;
         for (const s of slides) {
-          if (!s.file && !s.blob && !(ratioChanged && s.src)) { images.push(s.src); continue; }
+          if (!need(s)) { images.push(s.src); continue; }
           n++; const label = `Enviando foto ${n} de ${total}`;
           if (s.gif && s.file && !s.blob) { images.push(await sendBlob(s.file, s.file.name, 'image/gif', label)); continue; }
           const pre = s.blob || await autoCrop(s.file || s.src, ratio);
