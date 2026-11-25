@@ -505,6 +505,7 @@ function lockUI(on){
 }
 
 function openPanel(c, k){
+  stopVideos();
   const first = overlay.hidden;
   currentClient = c;
   render(c, k);
@@ -521,9 +522,13 @@ function openPanel(c, k){
   }
 }
 
+function stopVideos(except){ document.querySelectorAll('video').forEach(v => { if(v !== except && !v.paused) v.pause(); }); }
+/* só um vídeo toca por vez */
+document.addEventListener('play', e => { if(e.target && e.target.tagName === 'VIDEO') stopVideos(e.target); }, true);
+
 function closePanel(){
   if(overlay.hidden || closing) return;
-  closing = true;
+  closing = true; stopVideos();
   const c = currentClient;
   const done = () => {
     overlay.hidden = true; closing = false; lockUI(false);
