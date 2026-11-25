@@ -47,7 +47,8 @@ body.pf-preview .pf-a{display:none!important}
 .pf-toast.ok{border-color:#5CFF9D}.pf-toast.bad{border-color:#ff5c7a}
 .pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
 .pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
-body.pf-on .rodape{padding-bottom:96px}.p-in{padding-bottom:150px!important}
+body.pf-on .rodape{padding-bottom:96px}
+.pf-sub-tools{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:3}.pf-sub-tools .pf-btn{padding:3px 8px;font-size:.72rem}.p-in{padding-bottom:150px!important}
 @media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:wrap;border-radius:20px}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body.pf-on .rodape{padding-bottom:84px}}
 .pf-modal [hidden]{display:none!important}
 .pf-foot-edit{position:absolute;top:-16px;right:14px;z-index:2}
@@ -709,6 +710,10 @@ const actions = {
     if (j < 0 || j >= L.length) return;
     [L[i], L[j]] = [L[j], L[i]]; PF.refresh(); await save();
   },
+  async 'move-sub'(id, _i, d) {
+    const h = PF.lookup(id); if (!h || !h.k) return; const L = h.c.children, k = L.indexOf(h.k), j = k + d;
+    if (j < 0 || j >= L.length) return; [L[k], L[j]] = [L[j], L[k]]; PF.refresh(); await save();
+  },
   async 'edit-settings'() {
     const st = PF.settings;
     const v = await modal({ title: 'Ajustes do site', ok: 'Salvar', fields: [
@@ -809,12 +814,13 @@ window.PF_ADMIN = {
     const w = item.works[i] || {}; const car = w.t === 'carousel';
     const crop = !car && w.t !== 'video' && w.src && !w.canva;
     return `<div class="pf-a pf-tile-tools">
-    ${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
+    <span class="pf-btn pf-grabw" draggable="true" data-i="${i}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
     ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}
     ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
     ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`;
   },
+  sub: k => `<div class="pf-a pf-sub-tools"><span class="pf-btn pf-grabs" draggable="true" data-sid="${k.id}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-sub', '‹', k.id, 'data-d="-1" title="Mover para antes"')}${btn('move-sub', '›', k.id, 'data-d="1" title="Mover para depois"')}</div>`,
   footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`
 };
 
@@ -828,6 +834,37 @@ gridEl.addEventListener('drop', async e => {
   const from = e.dataTransfer.getData('text/plain'), to = li.dataset.cid; if (!from || from === to) return;
   const L = PF.clients, a = L.findIndex(c => c.id === from), b = L.findIndex(c => c.id === to); if (a < 0 || b < 0) return;
   const [m] = L.splice(a, 1); L.splice(b, 0, m); PF.refresh(); await save();
+});
+
+/* arrastar e soltar dentro da página aberta (trabalhos e projetos) */
+const pb = document.getElementById('pbody');
+let dragW = null;
+pb.addEventListener('dragstart', e => {
+  const w = e.target.closest && e.target.closest('.pf-grabw'), sb = e.target.closest && e.target.closest('.pf-grabs');
+  if (!w && !sb) return;
+  dragW = w ? { kind: 'w', i: Number(w.dataset.i) } : { kind: 's', sid: sb.dataset.sid };
+  e.dataTransfer.setData('text/plain', 'x'); e.dataTransfer.effectAllowed = 'move';
+  const box = (w || sb).closest('.tile, .subw'); try { e.dataTransfer.setDragImage(box, 30, 30); } catch (x) {}
+});
+pb.addEventListener('dragend', () => { dragW = null; pb.querySelectorAll('.tile,.subw').forEach(x => x.style.outline = ''); });
+pb.addEventListener('dragover', e => {
+  if (!dragW) return; const t = e.target.closest(dragW.kind === 'w' ? '.tile' : '.subw'); if (!t) return;
+  e.preventDefault(); pb.querySelectorAll('.tile,.subw').forEach(x => x.style.outline = ''); t.style.outline = '3px solid var(--accent)';
+});
+pb.addEventListener('drop', async e => {
+  if (!dragW) return; const d = dragW; dragW = null;
+  if (d.kind === 'w') {
+    const t = e.target.closest('.tile'); if (!t) return; e.preventDefault();
+    const it = findItem(PF.key); if (!it) return; const L = it.works, from = d.i, to = Number(t.dataset.wi);
+    if (Number.isNaN(to) || from === to || !L[from] || !L[to]) return;
+    if ((L[from].t === 'video') !== (L[to].t === 'video')) { toast('Vídeos ficam sempre antes dos designs. Mova dentro do mesmo grupo.', '', 4500); return; }
+    const [m] = L.splice(from, 1); L.splice(to, 0, m); PF.refresh(); await save();
+  } else {
+    const t = e.target.closest('.subw'); if (!t) return; e.preventDefault();
+    const h = PF.lookup(PF.key); if (!h || h.k) return; const L = h.c.children;
+    const a = L.findIndex(x => x.id === d.sid), b = L.findIndex(x => x.id === t.dataset.sid); if (a < 0 || b < 0 || a === b) return;
+    const [m] = L.splice(a, 1); L.splice(b, 0, m); PF.refresh(); await save();
+  }
 });
 
 /* ---------- barra do administrador ---------- */

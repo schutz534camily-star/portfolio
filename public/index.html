@@ -137,6 +137,8 @@ main.wrap{width:100%;flex:1 0 auto}
 
 
 /* carrossel */
+.subw{position:relative;min-width:0}
+.subw .sub{width:100%;height:100%}
 .onlyme{opacity:.75;font-style:italic;font-size:.72rem}
 body.pf-preview .tile.empty{display:none}
 .carcover{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:none;cursor:zoom-in}
@@ -339,9 +341,9 @@ function render(c, k){
        : `<span aria-current="page">${esc(c.name||'Projeto')}</span>`);
   const subs = (!k && c.children) ? `<section class="block"><h3><span class="dot o"></span>Projetos<small>${plural(c.children.length,'projeto','projetos')}</small></h3>
     <div class="subs">${c.children.map((s,i)=>`
-      <button class="sub" type="button" data-go="${s.id}" style="--i:${i};--a:${120+i*50}deg">
+      <div class="subw" data-sid="${s.id}"><button class="sub" type="button" data-go="${s.id}" style="--i:${i};--a:${120+i*50}deg">
         <span><h4>${esc(s.name||'Projeto')}</h4>${s.kind?`<p>${esc(s.kind)}</p>`:''}</span>
-      </button>`).join('')}</div></section>` : '';
+      </button>${AD()?AD().sub(s):''}</div>`).join('')}</div></section>` : '';
   const ig = item.ig ? `<a class="ig" href="https://www.instagram.com/${esc(item.ig)}/" target="_blank" rel="noopener noreferrer">@${esc(item.ig)}</a>` : '';
   pbody.innerHTML = `<h2 id="p-title"${item.name?'':' hidden'}>${esc(item.name)}</h2>
     ${ig}
