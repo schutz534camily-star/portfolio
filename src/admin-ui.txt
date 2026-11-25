@@ -151,7 +151,7 @@ body.pf-sel .tile video{pointer-events:none}
 .th-pv .card:hover{transform:none}
 .th-pv .cbody{padding:8px 12px;gap:2px;flex:none}
 .th-pv .cbody h3{font-size:1.05rem}
-.th-pv .thumb{aspect-ratio:16/4}
+.th-pv .thumb{padding-top:25%}
 .th-pv .chips{margin:0;padding:0}
 .th-pv .p-in{padding:0!important;max-width:none}
 .th-pv .lead{margin:0!important;font-size:.92rem!important}
