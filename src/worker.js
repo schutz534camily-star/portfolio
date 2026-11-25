@@ -155,12 +155,26 @@ function cleanFooter(arr) {
 }
 
 /* ---------- ajustes do site ---------- */
-const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC: '.', tabTitle: 'Portfólio de Design e Vídeo' };
+const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC: '.', tabTitle: 'Portfólio de Design e Vídeo', theme: {} };
+/* aparência: só chaves conhecidas; cores em #RRGGBB; fontes "g:Nome|400;700" (Google) ou "s:Nome" (do sistema) */
+const THEME_COLORS = new Set(['c_veil', 'c_cardbg', 'c_line', 'c_ink', 'c_muted', 'c_accent', 'c_detail', 'c_hero', 'c_mov', 'c_dot', 'c_sec', 'c_card', 'c_kind', 'c_lead', 'c_ig', 'c_chip', 'c_sub', 'c_blk', 'c_cap', 'c_nav', 'c_foot', 'c_f1', 'c_f2', 'c_g1', 'c_g2']);
+const THEME_FONTS = new Set(['f_body', 'f_display', 'f_hero', 'f_sec', 'f_card', 'f_kind', 'f_lead', 'f_ig', 'f_chip', 'f_sub', 'f_blk', 'f_cap', 'f_nav', 'f_foot']);
+const FONT_OK = /^(g:[A-Za-z0-9 ]{2,40}\|\d{3}(;\d{3}){0,5}|s:[A-Za-z ]{2,30})$/;
+function cleanTheme(t) {
+  const out = {};
+  if (!t || typeof t !== 'object') return out;
+  for (const [k, v] of Object.entries(t)) {
+    if (typeof v !== 'string' || !v) continue;
+    if (THEME_COLORS.has(k)) { if (!/^#[0-9a-fA-F]{6}$/.test(v)) throw new Error('cor inválida'); out[k] = v.toUpperCase(); }
+    else if (THEME_FONTS.has(k)) { if (!FONT_OK.test(v)) throw new Error('fonte inválida'); out[k] = v; }
+  }
+  return out;
+}
 function cleanSettings(o) {
   if (!o || typeof o !== 'object') throw new Error('ajustes inválidos');
   const bg = typeof o.bg === 'string' ? o.bg : '';
   if (bg && !okSrc(bg)) throw new Error('imagem de fundo inválida');
-  return { bg, heroA: str(o.heroA, 60), heroB: str(o.heroB, 40), heroC: str(o.heroC, 10), tabTitle: str(o.tabTitle, 80) };
+  return { bg, heroA: str(o.heroA, 60), heroB: str(o.heroB, 40), heroC: str(o.heroC, 10), tabTitle: str(o.tabTitle, 80), theme: cleanTheme(o.theme) };
 }
 
 /* ---------- conteúdo ---------- */
@@ -188,7 +202,7 @@ async function loadContent(env) {
     row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
   }
   const footer = f ? JSON.parse(f.value) : cleanFooter((await getSeed()).footer);
-  const settings = st ? JSON.parse(st.value) : { ...DEFAULT_SETTINGS, ...((await getSeed()).settings || {}) };
+  const settings = { ...DEFAULT_SETTINGS, ...(st ? JSON.parse(st.value) : ((await getSeed()).settings || {})) };
   return { clients: JSON.parse(row.value), rev: row.rev, footer, settings };
 }
 
