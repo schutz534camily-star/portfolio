@@ -285,8 +285,10 @@ function xhrPut(url, blob, onProg) {
   });
 }
 /* envia um arquivo/blob em pedaços e devolve o endereço salvo */
+let uploading = 0;
+addEventListener('beforeunload', e => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
 async function sendBlob(blob, name, type, label) {
-  const p = progress(label || 'Enviando ' + name + '…');
+  const p = progress(label || 'Enviando ' + name + '…'); uploading++;
   try {
     const init = await api('POST', '/api/media/init', { name, type, size: blob.size });
     let sent = 0;
@@ -298,6 +300,7 @@ async function sendBlob(blob, name, type, label) {
     const done = await api('POST', `/api/media/${init.id}/done`, {});
     p.done(); usage(); return done.src;
   } catch (e) { p.fail(e.message); e.shown = true; throw e; }
+  finally { uploading--; }
 }
 /* arquivo escolhido -> { src, t, r }. "pre" = imagem já recortada { blob, type, ratio } */
 async function upload(file, pre) {
@@ -696,9 +699,10 @@ const actions = {
           if (!pre) { if (nImg > 1) toast('Envio cancelado nas fotos restantes.'); break; }
           up = await upload(f, pre); up.t = 'design';
         } else up = await upload(f);
-        it.works.push({ t: up.t, title: '', r: up.r, src: up.src });
+        const cur = findItem(id); if (!cur) throw new Error('Não achei o card para colocar o arquivo. Atualize a página e tente de novo.');
+        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src });
         PF.refresh(); await save();
-      } catch (e) { /* aviso já mostrado */ }
+      } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao adicionar.', 'bad', 7000); }
     }
   },
   async 'add-carousel'(id) {
@@ -787,9 +791,10 @@ const actions = {
       let pre = null;
       if (f.type.startsWith('image/')) { pre = await cropFile(f, { ratio: w.r || '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto' }); if (!pre) return; }
       const up = await upload(f, pre); if (pre) up.t = 'design'; const old = mediaOf(w.src);
-      w.src = up.src; w.t = up.t; w.r = up.r; delete w.canva;
+      const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2) throw new Error('Não achei o trabalho para trocar. Atualize a página e tente de novo.');
+      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva;
       PF.refresh(); await save(); dropMedia(old);
-    } catch (e) {}
+    } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao trocar.', 'bad', 7000); }
   },
   async 'del-work'(id, i) {
     const it = findItem(id); const w = it && it.works[i]; if (!w) return;

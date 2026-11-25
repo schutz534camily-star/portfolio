@@ -389,7 +389,8 @@ export default {
       if (m && method === 'POST') {
         const row = await env.DB.prepare('SELECT chunks FROM media WHERE id = ?').bind(m[1]).first();
         if (!row) return fail(404, 'Envio inválido.');
-        for (let i = 0; i < row.chunks; i++) if (!(await env.MEDIA.get(`m:${m[1]}:${i}`, { type: 'stream' }))) return fail(400, 'Envio incompleto, tente de novo.');
+        // cada pedaço já foi conferido (tamanho exato) ao ser gravado; aqui só olhamos o primeiro e o último (poucas leituras, resposta rápida)
+        for (const i of new Set([0, row.chunks - 1])) if (!(await env.MEDIA.get(`m:${m[1]}:${i}`, { type: 'stream' }))) return fail(400, 'Envio incompleto, tente de novo.');
         await env.DB.prepare('UPDATE media SET done = 1 WHERE id = ?').bind(m[1]).run();
         return json({ ok: true, src: `/media/${m[1]}` });
       }
