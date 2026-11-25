@@ -91,10 +91,18 @@ const SRC_OK = /^(\/media\/[a-f0-9]{16}|(videos|images)\/[A-Za-z0-9._\-\/]{1,120
 const RATIO_OK = /^\d{1,2}\/\d{1,2}$/;
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+const okSrc = v => typeof v === 'string' && SRC_OK.test(v) && !v.includes('..');
 function cleanWork(w) {
   if (!w || typeof w !== 'object') throw new Error('trabalho inválido');
-  const out = { t: w.t === 'video' ? 'video' : 'design', title: str(w.title, 120), r: RATIO_OK.test(w.r) ? w.r : '16/9' };
-  if (w.src) { if (!SRC_OK.test(w.src) || w.src.includes('..')) throw new Error('arquivo inválido'); out.src = w.src; }
+  const t = w.t === 'video' ? 'video' : w.t === 'carousel' ? 'carousel' : 'design';
+  const out = { t, title: str(w.title, 120), r: RATIO_OK.test(w.r) ? w.r : '16/9' };
+  if (t === 'carousel') {
+    if (!Array.isArray(w.images) || w.images.length > 40) throw new Error('carrossel inválido');
+    if (!w.images.every(okSrc)) throw new Error('arquivo inválido no carrossel');
+    out.images = w.images;
+    return out;
+  }
+  if (w.src) { if (!okSrc(w.src)) throw new Error('arquivo inválido'); out.src = w.src; }
   if (w.canva) {
     let u; try { u = new URL(w.canva); } catch { throw new Error('link do Canva inválido'); }
     if (u.protocol !== 'https:') throw new Error('link do Canva inválido');
@@ -106,7 +114,7 @@ function cleanItem(c, nested) {
   if (!c || typeof c !== 'object') throw new Error('item inválido');
   const id = str(c.id, 60);
   if (!/^[a-z0-9-]{1,60}$/.test(id)) throw new Error('identificador inválido');
-  const out = { id, name: str(c.name, 120) || 'Sem título', mono: str(c.mono, 4), kind: str(c.kind, 120), desc: str(c.desc, 600) };
+  const out = { id, name: str(c.name, 120), mono: str(c.mono, 4), kind: str(c.kind, 120), desc: str(c.desc, 600) };
   const ig = str(c.ig, 40);
   if (ig) { if (!/^[A-Za-z0-9._]{1,40}$/.test(ig)) throw new Error('Instagram inválido'); out.ig = ig; }
   if (!nested && c.cover) { if (!SRC_OK.test(c.cover) || c.cover.includes('..')) throw new Error('capa inválida'); out.cover = c.cover; }
@@ -124,19 +132,45 @@ function cleanContent(arr) {
 const mediaIds = clients => {
   const s = new Set();
   const add = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); if (m) s.add(m[1]); };
-  for (const c of clients) { add(c.cover); for (const w of c.works || []) add(w.src); for (const k of c.children || []) for (const w of k.works || []) add(w.src); }
+  const addW = w => { add(w.src); (w.images || []).forEach(add); };
+  for (const c of clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
   return s;
 };
 
+/* ---------- rodapé ---------- */
+const ICONS = new Set(['user', 'instagram', 'whatsapp', 'mail', 'phone', 'link']);
+function cleanFooter(arr) {
+  if (!Array.isArray(arr) || arr.length > 12) throw new Error('rodapé inválido');
+  return arr.map(i => {
+    if (!i || typeof i !== 'object') throw new Error('item do rodapé inválido');
+    const out = { icon: ICONS.has(i.icon) ? i.icon : 'link', text: str(i.text, 80) };
+    const href = str(i.href, 500);
+    if (href) {
+      let u; try { u = new URL(href); } catch { throw new Error('Link inválido: ' + href); }
+      if (!['https:', 'http:', 'mailto:', 'tel:'].includes(u.protocol)) throw new Error('O link precisa começar com https://, mailto: ou tel:');
+      out.href = href;
+    }
+    return out;
+  });
+}
+
 /* ---------- conteúdo ---------- */
+async function loadSeed(env) {
+  return (await env.ASSETS.fetch(new Request('https://assets.local/seed.json'))).json();
+}
 async function loadContent(env) {
   const row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
-  if (row) return { clients: JSON.parse(row.value), rev: row.rev };
-  const seed = await (await env.ASSETS.fetch(new Request('https://assets.local/seed.json'))).json();
-  const clients = cleanContent(seed);
+  const f = await env.DB.prepare("SELECT value FROM docs WHERE key = 'footer'").first();
+  let footer = f ? JSON.parse(f.value) : null;
+  if (row) {
+    if (!footer) footer = cleanFooter((await loadSeed(env)).footer);
+    return { clients: JSON.parse(row.value), rev: row.rev, footer };
+  }
+  const seed = await loadSeed(env);
+  const clients = cleanContent(seed.clients);
   await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('content', ?, 1, ?)").bind(JSON.stringify(clients), now()).run();
   const again = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
-  return { clients: JSON.parse(again.value), rev: again.rev };
+  return { clients: JSON.parse(again.value), rev: again.rev, footer: footer || cleanFooter(seed.footer) };
 }
 
 async function deleteMedia(env, id) {
@@ -203,8 +237,8 @@ export default {
 
       /* públicas */
       if (path === '/api/content' && method === 'GET') {
-        const { clients, rev } = await loadContent(env);
-        return json({ clients, rev }, 200, { 'cache-control': 'no-cache' });
+        const { clients, rev, footer } = await loadContent(env);
+        return json({ clients, rev, footer }, 200, { 'cache-control': 'no-cache' });
       }
       if (path === '/api/me' && method === 'GET') {
         const u = await currentUser(req, env);
@@ -287,6 +321,13 @@ export default {
         const all = await env.DB.prepare('SELECT id, created FROM media').all();
         for (const m of all.results) if (!used.has(m.id) && m.created < t - 7200) await deleteMedia(env, m.id);
         return json({ ok: true, rev: cur.rev + 1 });
+      }
+
+      if (path === '/api/footer' && method === 'PUT') {
+        const body = await req.json().catch(() => ({}));
+        let footer; try { footer = cleanFooter(body.footer); } catch (e) { return fail(400, e.message); }
+        await env.DB.prepare("INSERT INTO docs (key, value, rev, updated) VALUES ('footer', ?, 1, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated = excluded.updated").bind(JSON.stringify(footer), now()).run();
+        return json({ ok: true, footer });
       }
 
       if (path === '/api/usage' && method === 'GET') {

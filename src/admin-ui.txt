@@ -47,11 +47,51 @@ body.pf-preview .pf-a{display:none!important}
 .pf-toast.ok{border-color:#5CFF9D}.pf-toast.bad{border-color:#ff5c7a}
 .pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
 .pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
-body{padding-bottom:84px}.p-in{padding-bottom:150px!important}
-@media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:nowrap}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body{padding-bottom:64px}}
+body.pf-on .rodape{padding-bottom:96px}.p-in{padding-bottom:150px!important}
+@media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:nowrap}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body.pf-on .rodape{padding-bottom:84px}}
 .pf-modal [hidden]{display:none!important}
+.pf-foot-edit{position:absolute;top:-16px;right:14px;z-index:2}
+.pf-modal.wide{width:min(680px,100%)}
+.crop-stage{position:relative;margin:12px auto 0;background:#000;border-radius:12px;overflow:hidden;cursor:grab;touch-action:none;user-select:none}
+.crop-stage:active{cursor:grabbing}
+.crop-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none;-webkit-user-drag:none}
+.crop-stage::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.85);background:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 33.33% 0/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 66.66% 0/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 0 33.33%/100% 1px no-repeat,linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) 0 66.66%/100% 1px no-repeat}
+.crop-ctl{display:flex;align-items:center;gap:10px;margin-top:12px}
+.crop-ctl input[type=range]{flex:1;accent-color:var(--accent)}
+.crop-hint{color:var(--muted);font-size:.8rem;text-align:center;margin-top:8px}
+.crop-prev{margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.25)}
+.crop-prev>b{display:block;font-size:.8rem;color:var(--muted);margin-bottom:10px}
+.mock-card{width:210px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.6)}
+.mock-card .th{aspect-ratio:16/10;background:#222 center/cover no-repeat}
+.mock-card .ln{height:9px;border-radius:9px;background:rgba(255,243,252,.5);margin:12px 12px 0;width:60%}
+.mock-card .ln.s{width:40%;height:7px;opacity:.5;margin-bottom:12px}
+.mock-tile{border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#222 center/cover no-repeat}
+.mock-car{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#222 center/cover no-repeat}
+.mock-car i{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.mock-car i u{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45)}
+.mock-car i u:first-child{background:#fff}
+.slides{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.slide{width:118px;display:grid;gap:6px}
+.slide .im{position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--line);background:#222;cursor:grab}
+.slide.sel .im{border-color:var(--accent)}
+.slide .im img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.slide .im em{position:absolute;top:5px;left:5px;background:rgba(20,0,26,.85);border-radius:99px;font-style:normal;font-size:.7rem;font-weight:700;padding:1px 8px}
+.slide.drag{opacity:.4}.slide.over .im{border-color:#5CFF9D}
+.slide .bt{display:flex;gap:4px;justify-content:center}
+.slide .bt .pf-btn{padding:3px 8px;font-size:.78rem}
+.viewer{position:relative;margin:12px auto 0;background:#000;border-radius:12px;overflow:hidden}
+.viewer img{width:100%;height:100%;object-fit:cover;display:block}
+.viewer .nv{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,243,252,.9);color:#2b0034;font-size:1.2rem;cursor:pointer}
+.viewer .nv.l{left:8px}.viewer .nv.r{right:8px}
+.viewer .dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.viewer .dots u{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45)}.viewer .dots u.on{background:#fff}
+.frow{display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center;margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.25)}
+.frow select,.frow input{margin-top:0!important}
+.frow .full{grid-column:1/-1}
+.frow .bt{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end}
 `;
 document.head.append(st);
+document.body.classList.add('pf-on');
 
 /* ---------- avisos ---------- */
 const toasts = document.createElement('div'); toasts.className = 'pf-toasts pf-a'; document.body.append(toasts);
@@ -99,60 +139,84 @@ function save() {
 }
 async function reload() {
   const r = await (await fetch('/api/content', { cache: 'no-store' })).json();
-  PF.setClients(r.clients, r.rev);
+  PF.setClients(r.clients, r.rev, r.footer);
 }
 async function dropMedia(ids) {
   for (const id of ids) { try { await api('DELETE', '/api/media/' + id); } catch (e) {} }
   usage();
 }
 const mediaOf = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); return m ? [m[1]] : []; };
-const mediaInWorks = ws => (ws || []).flatMap(w => mediaOf(w.src));
+const mediaOfWork = w => [...mediaOf(w.src), ...(w.images || []).flatMap(mediaOf)];
+const mediaInWorks = ws => (ws || []).flatMap(mediaOfWork);
 const mediaInItem = it => [...mediaOf(it.cover), ...mediaInWorks(it.works), ...(it.children || []).flatMap(k => mediaInWorks(k.works))];
 
 /* ---------- janelas ---------- */
+const stack = [];
+function shell(cls) {
+  const bg = document.createElement('div'); bg.className = 'pf-modal-bg pf-a';
+  const box = document.createElement('form'); box.className = 'pf-modal ' + (cls || ''); box.noValidate = true;
+  bg.append(box); document.body.append(bg);
+  const ent = { bg, cancel: null };
+  stack.push(ent);
+  return { bg, box, ent, close() { const k = stack.indexOf(ent); if (k >= 0) stack.splice(k, 1); bg.remove(); } };
+}
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !stack.length) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const top = stack[stack.length - 1]; if (top.cancel) top.cancel();
+}, true);
+const row = (...els) => { const r = document.createElement('div'); r.className = 'row'; r.append(...els); return r; };
+const mkBtn = (label, cls, onclick, type = 'button') => { const b = document.createElement('button'); b.type = type; b.className = 'pf-btn ' + (cls || ''); b.textContent = label; if (onclick) b.onclick = onclick; return b; };
+const mkLabel = (text, hint, el) => { const l = document.createElement('label'); l.append(text); if (hint) { const sm = document.createElement('small'); sm.textContent = hint; l.append(sm); } l.append(el); return l; };
+
 function modal({ title, message, fields = [], ok = 'Salvar', danger = false, cancel = 'Cancelar' }) {
   return new Promise(resolve => {
-    const bg = document.createElement('div'); bg.className = 'pf-modal-bg pf-a';
-    const box = document.createElement('form'); box.className = 'pf-modal'; box.noValidate = true;
+    const sh = shell(); const box = sh.box;
     const h = document.createElement('h3'); h.textContent = title; box.append(h);
     if (message) { const p = document.createElement('p'); p.className = 'msg'; p.textContent = message; box.append(p); }
     const inputs = {};
     for (const f of fields) {
-      const lab = document.createElement('label'); lab.append(f.label);
-      if (f.hint) { const sm = document.createElement('small'); sm.textContent = f.hint; lab.append(sm); }
       let el;
       if (f.type === 'textarea') { el = document.createElement('textarea'); el.value = f.value || ''; }
       else if (f.type === 'select') { el = document.createElement('select'); for (const [v, l] of f.options) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === f.value) o.selected = true; el.append(o); } }
       else if (f.type === 'image') {
         el = document.createElement('div'); el.className = 'filebox';
         const prev = document.createElement('img'); prev.hidden = !f.value; if (f.value) prev.src = f.value;
-        const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'pf-btn'; pick.textContent = f.value ? 'Trocar foto' : 'Escolher foto';
-        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'pf-btn danger'; rm.textContent = 'Remover'; rm.hidden = !f.value;
+        const pick = mkBtn(f.value ? 'Trocar foto' : 'Escolher foto');
+        const adj = mkBtn('✂ Ajustar recorte'); adj.hidden = !f.value;
+        const rm = mkBtn('Remover', 'danger'); rm.hidden = !f.value;
         const file = document.createElement('input'); file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
         el.state = { file: null, remove: false };
+        const shown = () => { prev.hidden = false; rm.hidden = false; adj.hidden = false; pick.textContent = 'Trocar foto'; };
         pick.onclick = () => file.click();
-        file.onchange = () => { const fl = file.files[0]; if (!fl) return; el.state = { file: fl, remove: false }; prev.src = URL.createObjectURL(fl); prev.hidden = false; rm.hidden = false; pick.textContent = 'Trocar foto'; };
-        rm.onclick = () => { el.state = { file: null, remove: true }; prev.hidden = true; rm.hidden = true; pick.textContent = 'Escolher foto'; };
-        el.append(prev, pick, rm, file);
+        file.onchange = async () => {
+          const fl = file.files[0]; file.value = ''; if (!fl) return;
+          const r = await cropFile(fl, { ratio: '16/10', fixed: true, kind: 'card', title: 'Recortar a foto do card' }); if (!r) return;
+          el.state = { file: new File([r.blob], fl.name.replace(/\.[^.]+$/, '') + '.jpg', { type: r.type }), remove: false };
+          prev.src = URL.createObjectURL(r.blob); shown();
+        };
+        adj.onclick = async () => {
+          const src = el.state.file ? URL.createObjectURL(el.state.file) : (prev.getAttribute('src') || f.value);
+          const r = await cropDialog({ source: src, ratio: '16/10', fixed: true, kind: 'card', title: 'Ajustar o recorte do card' }); if (!r) return;
+          el.state = { file: new File([r.blob], 'capa.jpg', { type: r.type }), remove: false }; prev.src = URL.createObjectURL(r.blob);
+        };
+        rm.onclick = () => { el.state = { file: null, remove: true }; prev.hidden = true; rm.hidden = true; adj.hidden = true; pick.textContent = 'Escolher foto'; };
+        el.append(prev, pick, adj, rm, file);
       }
       else { el = document.createElement('input'); el.type = f.type || 'text'; el.value = f.value || ''; if (f.placeholder) el.placeholder = f.placeholder; if (f.max) el.maxLength = f.max; }
-      inputs[f.key] = el; lab.append(el); box.append(lab);
+      inputs[f.key] = el; box.append(mkLabel(f.label, f.hint, el));
     }
     const err = document.createElement('div'); err.className = 'err'; box.append(err);
-    const row = document.createElement('div'); row.className = 'row';
-    const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'pf-btn'; cb.textContent = cancel;
-    const ob = document.createElement('button'); ob.type = 'submit'; ob.className = 'pf-btn ' + (danger ? 'danger' : 'primary'); ob.textContent = ok;
+    const ob = mkBtn(ok, danger ? 'danger' : 'primary', null, 'submit');
     if (danger) { ob.style.background = '#ff5c7a'; ob.style.borderColor = '#ff5c7a'; ob.style.color = '#2b0034'; }
-    row.append(cb, ob); box.append(row); bg.append(box); document.body.append(bg);
-    const close = v => { removeEventListener('keydown', onKey, true); bg.remove(); resolve(v); };
-    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(null); } };
-    addEventListener('keydown', onKey, true);
-    cb.onclick = () => close(null);
+    const done = v => { sh.close(); resolve(v); };
+    sh.ent.cancel = () => done(null);
+    box.append(row(mkBtn(cancel, '', () => done(null)), ob));
     box.onsubmit = e => {
       e.preventDefault();
       const out = {};
       for (const f of fields) { const el = inputs[f.key]; out[f.key] = f.type === 'image' ? el.state : (el.value || '').trim(); if (f.required && !out[f.key]) { err.textContent = 'Preencha: ' + f.label; el.focus && el.focus(); return; } }
-      close(out);
+      done(out);
     };
     const first = box.querySelector('input[type=text],input[type=url],input[type=password],textarea');
     (first || ob).focus();
@@ -195,13 +259,28 @@ function xhrPut(url, blob, onProg) {
     x.send(blob);
   });
 }
-/* envia um arquivo em pedaços e devolve { src, t, r } */
-async function upload(file) {
-  const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(file.name);
-  const p = progress('Preparando ' + file.name + '…');
+/* envia um arquivo/blob em pedaços e devolve o endereço salvo */
+async function sendBlob(blob, name, type, label) {
+  const p = progress(label || 'Enviando ' + name + '…');
+  try {
+    const init = await api('POST', '/api/media/init', { name, type, size: blob.size });
+    let sent = 0;
+    for (let i = 0; i < init.chunks; i++) {
+      const part = blob.slice(i * init.chunk, (i + 1) * init.chunk); const base = sent;
+      await xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `${label || 'Enviando ' + name} — ${Math.round((base + loaded) / blob.size * 100)}%`));
+      sent += part.size;
+    }
+    const done = await api('POST', `/api/media/${init.id}/done`, {});
+    p.done(); usage(); return done.src;
+  } catch (e) { p.fail(e.message); e.shown = true; throw e; }
+}
+/* arquivo escolhido -> { src, t, r }. "pre" = imagem já recortada { blob, type, ratio } */
+async function upload(file, pre) {
+  const isVideo = !pre && (file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(file.name));
   try {
     let blob = file, type = file.type, ratio;
-    if (isVideo) {
+    if (pre) ({ blob, type, ratio } = pre);
+    else if (isVideo) {
       if (!/^video\/(mp4|webm|quicktime)$/.test(type)) type = /\.webm$/i.test(file.name) ? 'video/webm' : 'video/mp4';
       if (type === 'video/quicktime') toast('Arquivos .MOV podem não abrir no Chrome/Windows. O ideal é enviar em MP4.', '', 7000);
       ratio = await videoRatio(file);
@@ -209,18 +288,9 @@ async function upload(file) {
       if (!file.type.startsWith('image/')) throw new Error('"' + file.name + '" não é imagem nem vídeo.');
       ({ blob, type, ratio } = await prepareImage(file));
     }
-    const init = await api('POST', '/api/media/init', { name: file.name, type, size: blob.size });
-    let sent = 0;
-    for (let i = 0; i < init.chunks; i++) {
-      const part = blob.slice(i * init.chunk, (i + 1) * init.chunk);
-      const base = sent;
-      await xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `Enviando ${file.name} — ${Math.round((base + loaded) / blob.size * 100)}%`));
-      sent += part.size;
-    }
-    const done = await api('POST', `/api/media/${init.id}/done`, {});
-    p.done(); usage();
-    return { src: done.src, t: isVideo ? 'video' : 'design', r: ratio };
-  } catch (e) { p.fail(e.message); throw e; }
+    const src = await sendBlob(blob, file.name, type);
+    return { src, t: isVideo ? 'video' : 'design', r: ratio };
+  } catch (e) { if (!e.shown) toast(e.message, 'bad', 6000); throw e; }
 }
 function pickFiles(accept, multiple) {
   return new Promise(resolve => {
@@ -229,6 +299,100 @@ function pickFiles(accept, multiple) {
     i.oncancel = () => { resolve([]); i.remove(); };
     document.body.append(i); i.click();
   });
+}
+
+/* ---------- recorte com prévia ---------- */
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Não consegui abrir a imagem.')); i.src = src; });
+const ratioNum = r => { const [a, b] = r.split('/').map(Number); return a / b; };
+function renderCrop(img, sx, sy, sw, sh, maxSide) {
+  const k = Math.min(1, maxSide / Math.max(sw, sh));
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return c;
+}
+const canvasBlob = (c, q = .88) => new Promise(r => c.toBlob(r, 'image/jpeg', q));
+/* recorte central automático (cobre o quadro inteiro) */
+async function autoCrop(source, ratio) {
+  const url = typeof source === 'string' ? source : URL.createObjectURL(source);
+  const img = await loadImg(url); if (typeof source !== 'string') URL.revokeObjectURL(url);
+  const q = ratioNum(ratio); let sw = img.naturalWidth, sh = sw / q;
+  if (sh > img.naturalHeight) { sh = img.naturalHeight; sw = sh * q; }
+  const c = renderCrop(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 1600);
+  return { blob: await canvasBlob(c), type: 'image/jpeg', ratio };
+}
+/* kind: 'card' | 'tile' | 'carousel'. Devolve { blob, type, ratio } | { skipped:true } | null (cancelou) */
+function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind = 'tile', title = 'Recortar foto', counter = '', allowSkip = false }) {
+  return new Promise(async resolve => {
+    let img;
+    const objUrl = typeof source === 'string' ? source : URL.createObjectURL(source);
+    try { img = await loadImg(objUrl); } catch (e) { toast(e.message, 'bad'); return resolve(null); }
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    let cur = ratio, W = 0, H = 0, z = 1, x = 0, y = 0;
+    const sh = shell('wide'); const box = sh.box;
+    const h = document.createElement('h3'); h.textContent = title + (counter ? ' · ' + counter : ''); box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Arraste a foto para reposicionar e use o zoom. O que está dentro da moldura é o que vai aparecer.'; box.append(p0);
+    let sel = null;
+    if (ratios && !fixed) {
+      sel = document.createElement('select');
+      for (const [v, l] of ratios) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === cur) o.selected = true; sel.append(o); }
+      if (![...sel.options].some(o => o.value === cur)) { const o = document.createElement('option'); o.value = cur; o.textContent = cur.replace('/', ':'); o.selected = true; sel.prepend(o); }
+      box.append(mkLabel('Formato da moldura', null, sel));
+    }
+    const stage = document.createElement('div'); stage.className = 'crop-stage';
+    const im = document.createElement('img'); im.src = objUrl; im.draggable = false; stage.append(im); box.append(stage);
+    const zoom = document.createElement('input'); zoom.type = 'range'; zoom.min = 100; zoom.max = 500; zoom.value = 100;
+    const ctl = document.createElement('div'); ctl.className = 'crop-ctl'; ctl.append('−', zoom, '+'); box.append(ctl);
+    const prev = document.createElement('div'); prev.className = 'crop-prev';
+    const pl = document.createElement('b'); pl.textContent = kind === 'card' ? 'Prévia: como vai aparecer no card da página inicial' : kind === 'carousel' ? 'Prévia: como vai aparecer no carrossel' : 'Prévia: como vai aparecer dentro da galeria'; prev.append(pl);
+    const mock = document.createElement('div'); prev.append(mock); box.append(prev);
+
+    const base = () => Math.max(W / nw, H / nh);
+    const clamp = () => { const sc = base() * z; x = Math.min(0, Math.max(W - nw * sc, x)); y = Math.min(0, Math.max(H - nh * sc, y)); };
+    const apply = () => { clamp(); const sc = base() * z; im.style.width = nw + 'px'; im.style.height = nh + 'px'; im.style.transform = `translate(${x}px,${y}px) scale(${sc})`; schedulePrev(); };
+    const layout = () => {
+      const q = ratioNum(cur), maxW = Math.min(560, innerWidth - 90), maxH = Math.max(160, Math.min(innerHeight * .4, 400));
+      W = Math.min(maxW, maxH * q); H = W / q; stage.style.width = W + 'px'; stage.style.height = H + 'px';
+      z = 1; zoom.value = 100; x = (W - nw * base()) / 2; y = (H - nh * base()) / 2; apply();
+    };
+    const region = () => { const sc = base() * z; return { sx: -x / sc, sy: -y / sc, sw: W / sc, sh: H / sc }; };
+    let raf = 0;
+    function schedulePrev() {
+      if (raf) return; raf = requestAnimationFrame(() => {
+        raf = 0; const r = region(); const c = renderCrop(img, r.sx, r.sy, r.sw, r.sh, 360); const url = c.toDataURL('image/jpeg', .7);
+        mock.innerHTML = '';
+        if (kind === 'card') { mock.innerHTML = '<div class="mock-card"><div class="th"></div><div class="ln"></div><div class="ln s"></div></div>'; mock.firstChild.firstChild.style.backgroundImage = `url(${url})`; }
+        else { const m = document.createElement('div'); m.className = kind === 'carousel' ? 'mock-car' : 'mock-tile'; const w = Math.min(190, 150 * Math.max(1, ratioNum(cur))); m.style.width = w + 'px'; m.style.aspectRatio = cur; m.style.backgroundImage = `url(${url})`; if (kind === 'carousel') m.innerHTML = '<i><u></u><u></u><u></u></i>'; mock.append(m); }
+      });
+    }
+    let drag = null;
+    stage.addEventListener('pointerdown', e => { drag = { px: e.clientX, py: e.clientY, x, y }; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (!drag) return; x = drag.x + e.clientX - drag.px; y = drag.y + e.clientY - drag.py; apply(); });
+    stage.addEventListener('pointerup', () => { drag = null; });
+    const setZ = nz => { const oz = z, ocx = W / 2, ocy = H / 2; z = Math.min(5, Math.max(1, nz)); const k = z / oz; x = ocx - (ocx - x) * k; y = ocy - (ocy - y) * k; zoom.value = z * 100; apply(); };
+    zoom.oninput = () => setZ(zoom.value / 100);
+    stage.addEventListener('wheel', e => { e.preventDefault(); setZ(z * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+    if (sel) sel.onchange = () => { cur = sel.value; layout(); };
+
+    const finish = v => { if (typeof source !== 'string') URL.revokeObjectURL(objUrl); sh.close(); resolve(v); };
+    sh.ent.cancel = () => finish(null);
+    const ok = mkBtn('Aplicar recorte', 'primary', null, 'submit');
+    box.append(row(mkBtn('Cancelar', '', () => finish(null)), ...(allowSkip ? [mkBtn('Usar sem recortar', '', () => finish({ skipped: true }))] : []), ok));
+    box.onsubmit = async e => {
+      e.preventDefault(); ok.disabled = true;
+      const r = region(); const c = renderCrop(img, r.sx, r.sy, r.sw, r.sh, 1600);
+      finish({ blob: await canvasBlob(c), type: 'image/jpeg', ratio: cur });
+    };
+    layout(); ok.focus();
+  });
+}
+/* abre o recorte para um arquivo novo; GIF e "usar sem recortar" seguem o caminho normal */
+async function cropFile(file, opts) {
+  if (file.type === 'image/gif') return prepareImage(file);
+  const r = await cropDialog({ ...opts, source: file, allowSkip: !opts.fixed });
+  if (!r) return null;
+  if (r.skipped) return prepareImage(file);
+  return r;
 }
 
 /* ---------- utilidades de dados ---------- */
@@ -244,13 +408,163 @@ const igClean = v => v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\
 const findItem = id => { const h = PF.lookup(id); return h ? (h.k || h.c) : null; };
 const parentList = id => { const h = PF.lookup(id); if (!h) return null; return h.k ? { list: h.c.children, parent: h.c } : { list: PF.clients, parent: null }; };
 
+/* ---------- editor de carrossel ---------- */
+/* work = null (novo) ou o trabalho existente. Devolve { title, ratio, images:[endereços] } ou null */
+function carouselEditor(work) {
+  return new Promise(resolve => {
+    const sh = shell('wide'); const box = sh.box;
+    const h = document.createElement('h3'); h.textContent = work ? 'Editar carrossel' : 'Novo carrossel'; box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Adicione as fotos, arraste (ou use as setas) para mudar a ordem e use ✂ para recortar cada uma. Só salva quando você clicar em Salvar carrossel.'; box.append(p0);
+    let ratio = work ? work.r : '4/5', uid = 0, selId = null, ratioChanged = false;
+    let slides = (work && work.images || []).map(src => ({ id: ++uid, src, url: src, file: null, blob: null, gif: false }));
+    const title = document.createElement('input'); title.type = 'text'; title.maxLength = 120; title.value = work ? work.title : '';
+    box.append(mkLabel('Título (opcional)', null, title));
+    const sel = document.createElement('select');
+    for (const [v, l] of RATIOS) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === ratio) o.selected = true; sel.append(o); }
+    if (![...sel.options].some(o => o.value === ratio)) { const o = document.createElement('option'); o.value = ratio; o.textContent = ratio.replace('/', ':'); o.selected = true; sel.prepend(o); }
+    box.append(mkLabel('Formato das fotos do carrossel', 'Todas as fotos usam o mesmo formato (como no Instagram). O mais comum é 4:5 ou quadrado.', sel));
+    const addBtn = mkBtn('+ Adicionar fotos', 'primary');
+    const bar = document.createElement('div'); bar.style.marginTop = '14px'; bar.append(addBtn); box.append(bar);
+    const list = document.createElement('div'); list.className = 'slides'; box.append(list);
+    const vwrap = document.createElement('div'); box.append(vwrap);
+    const err = document.createElement('div'); err.className = 'err'; box.append(err);
+
+    const showUrl = s => s.blob ? s.url : s.url;
+    function draw() {
+      list.innerHTML = '';
+      slides.forEach((s, i) => {
+        const el = document.createElement('div'); el.className = 'slide' + (s.id === selId ? ' sel' : ''); el.draggable = true;
+        const im = document.createElement('div'); im.className = 'im'; im.style.aspectRatio = ratio;
+        const img = document.createElement('img'); img.src = showUrl(s); const num = document.createElement('em'); num.textContent = i + 1; im.append(img, num);
+        im.onclick = () => { selId = s.id; draw(); };
+        const bt = document.createElement('div'); bt.className = 'bt';
+        const l = mkBtn('←', '', () => move(i, -1)), r = mkBtn('→', '', () => move(i, 1)), c = mkBtn('✂', '', () => recrop(s)), x = mkBtn('✕', 'danger', () => { slides.splice(i, 1); if (selId === s.id) selId = null; draw(); });
+        l.disabled = i === 0; r.disabled = i === slides.length - 1; c.title = 'Recortar e reposicionar'; x.title = 'Tirar do carrossel'; if (s.gif) c.hidden = true;
+        bt.append(l, c, r, x); el.append(im, bt);
+        el.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); el.classList.add('drag'); };
+        el.ondragend = () => el.classList.remove('drag');
+        el.ondragover = e => { e.preventDefault(); el.classList.add('over'); };
+        el.ondragleave = () => el.classList.remove('over');
+        el.ondrop = e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (Number.isNaN(from) || from === i) return draw(); const [m] = slides.splice(from, 1); slides.splice(i, 0, m); draw(); };
+        list.append(el);
+      });
+      drawViewer();
+    }
+    function move(i, d) { const j = i + d; if (j < 0 || j >= slides.length) return; [slides[i], slides[j]] = [slides[j], slides[i]]; draw(); }
+    let vi = 0;
+    function drawViewer() {
+      vwrap.innerHTML = '';
+      if (!slides.length) return;
+      const idx = selId ? Math.max(0, slides.findIndex(s => s.id === selId)) : Math.min(vi, slides.length - 1); vi = idx;
+      const lab = document.createElement('div'); lab.className = 'crop-hint'; lab.textContent = 'Prévia: como a pessoa vai ver ao clicar na foto (setinhas para passar)'; lab.style.marginTop = '16px';
+      const v = document.createElement('div'); v.className = 'viewer'; v.style.aspectRatio = ratio; v.style.width = Math.min(300, 260 * Math.max(1, ratioNum(ratio))) + 'px';
+      const img = document.createElement('img'); img.src = showUrl(slides[idx]); v.append(img);
+      if (slides.length > 1) {
+        const pv = mkBtn('‹', ''); pv.className = 'nv l'; pv.onclick = () => { selId = slides[(idx - 1 + slides.length) % slides.length].id; draw(); };
+        const nx = mkBtn('›', ''); nx.className = 'nv r'; nx.onclick = () => { selId = slides[(idx + 1) % slides.length].id; draw(); };
+        const dots = document.createElement('div'); dots.className = 'dots'; slides.forEach((_, k) => { const u = document.createElement('u'); if (k === idx) u.className = 'on'; dots.append(u); });
+        v.append(pv, nx, dots);
+      }
+      vwrap.append(lab, v);
+    }
+    async function recrop(s) {
+      const source = s.file || s.src;
+      const r = await cropDialog({ source: s.blob ? s.url : source, ratio, fixed: true, kind: 'carousel', title: 'Recortar foto do carrossel' }); if (!r) return;
+      s.blob = r; s.url = URL.createObjectURL(r.blob); draw();
+    }
+    sel.onchange = () => {
+      if (slides.some(s => s.blob || s.src)) toast('Formato mudou: as fotos foram recentralizadas. Use ✂ para ajustar cada uma.', '', 5000);
+      ratio = sel.value; ratioChanged = true;
+      slides.forEach(s => { if (s.blob) { s.blob = null; s.url = s.file ? URL.createObjectURL(s.file) : s.src; } });
+      draw();
+    };
+    addBtn.onclick = async () => {
+      const files = await pickFiles('image/*', true);
+      for (const f of files) {
+        if (!f.type.startsWith('image/')) continue;
+        slides.push({ id: ++uid, src: null, file: f, url: URL.createObjectURL(f), blob: null, gif: f.type === 'image/gif' });
+      }
+      draw();
+    };
+
+    const done = v => { sh.close(); resolve(v); };
+    sh.ent.cancel = () => done(null);
+    const ok = mkBtn('Salvar carrossel', 'primary', null, 'submit');
+    box.append(row(mkBtn('Cancelar', '', () => done(null)), ok));
+    box.onsubmit = async e => {
+      e.preventDefault(); err.textContent = '';
+      if (!slides.length) { err.textContent = 'Adicione pelo menos uma foto.'; return; }
+      ok.disabled = true; ok.textContent = 'Enviando…';
+      try {
+        const images = []; let n = 0; const total = slides.filter(s => s.file || s.blob || (ratioChanged && s.src)).length;
+        for (const s of slides) {
+          if (!s.file && !s.blob && !(ratioChanged && s.src)) { images.push(s.src); continue; }
+          n++; const label = `Enviando foto ${n} de ${total}`;
+          if (s.gif && s.file && !s.blob) { images.push(await sendBlob(s.file, s.file.name, 'image/gif', label)); continue; }
+          const pre = s.blob || await autoCrop(s.file || s.src, ratio);
+          images.push(await sendBlob(pre.blob, 'carrossel.jpg', pre.type, label));
+        }
+        done({ title: title.value.trim(), ratio, images });
+      } catch (ex) { err.textContent = ex.message; ok.disabled = false; ok.textContent = 'Salvar carrossel'; }
+    };
+    draw();
+  });
+}
+
+/* ---------- editor do rodapé ---------- */
+const FICONS = [['user', 'Pessoa'], ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp'], ['mail', 'E-mail'], ['phone', 'Telefone'], ['link', 'Link']];
+function normHref(v, icon) {
+  v = (v || '').trim(); if (!v) return '';
+  if (/^(https?:|mailto:|tel:)/i.test(v)) return v;
+  if (/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(v)) return 'mailto:' + v;
+  if (icon === 'whatsapp' && /^[\d\s()+-]{8,}$/.test(v)) return 'https://wa.me/' + v.replace(/\D/g, '');
+  if (icon === 'phone' && /^[\d\s()+-]{6,}$/.test(v)) return 'tel:' + v.replace(/[^\d+]/g, '');
+  if (icon === 'instagram' && /^@?[A-Za-z0-9._]+$/.test(v)) return 'https://www.instagram.com/' + v.replace(/^@/, '') + '/';
+  return 'https://' + v.replace(/^\/+/, '');
+}
+function footerEditor(current) {
+  return new Promise(resolve => {
+    const sh = shell('wide'); const box = sh.box;
+    const h = document.createElement('h3'); h.textContent = 'Editar rodapé'; box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Cada linha é um item do rodapé. O link é opcional: com link, o item vira clicável. Pode colar um e-mail, um número de WhatsApp ou o endereço de um site.'; box.append(p0);
+    let items = current.map(i => ({ icon: i.icon, text: i.text, href: i.href || '' }));
+    const list = document.createElement('div'); box.append(list);
+    const err = document.createElement('div'); err.className = 'err';
+    function draw() {
+      list.innerHTML = '';
+      items.forEach((it, i) => {
+        const r = document.createElement('div'); r.className = 'frow';
+        const ic = document.createElement('select'); for (const [v, l] of FICONS) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === it.icon) o.selected = true; ic.append(o); } ic.onchange = () => { it.icon = ic.value; };
+        const tx = document.createElement('input'); tx.type = 'text'; tx.maxLength = 80; tx.placeholder = 'Texto que aparece'; tx.value = it.text; tx.oninput = () => { it.text = tx.value; };
+        const hr = document.createElement('input'); hr.type = 'text'; hr.className = 'full'; hr.placeholder = 'Link (opcional) — ex.: https://... ou seuemail@gmail.com'; hr.value = it.href; hr.oninput = () => { it.href = hr.value; };
+        const bt = document.createElement('div'); bt.className = 'bt';
+        const up = mkBtn('↑', '', () => { if (i) { [items[i - 1], items[i]] = [items[i], items[i - 1]]; draw(); } }), dn = mkBtn('↓', '', () => { if (i < items.length - 1) { [items[i + 1], items[i]] = [items[i], items[i + 1]]; draw(); } }), rm = mkBtn('Remover item', 'danger', () => { items.splice(i, 1); draw(); });
+        up.disabled = i === 0; dn.disabled = i === items.length - 1; bt.append(up, dn, rm);
+        r.append(ic, tx, hr, bt); list.append(r);
+      });
+    }
+    const add = mkBtn('+ Adicionar item', '', () => { if (items.length >= 12) return; items.push({ icon: 'link', text: '', href: '' }); draw(); });
+    box.append(add, err);
+    const done = v => { sh.close(); resolve(v); };
+    sh.ent.cancel = () => done(null);
+    const ok = mkBtn('Salvar rodapé', 'primary', null, 'submit');
+    box.append(row(mkBtn('Cancelar', '', () => done(null)), ok));
+    box.onsubmit = e => {
+      e.preventDefault();
+      const out = items.filter(i => i.text.trim() || i.href.trim()).map(i => ({ icon: i.icon, text: i.text.trim(), ...(i.href.trim() ? { href: normHref(i.href, i.icon) } : {}) }));
+      done(out);
+    };
+    draw();
+  });
+}
+
 /* ---------- ações ---------- */
 const infoFields = (it, top) => [
-  { key: 'name', label: 'Nome', value: it.name, required: true, max: 120 },
-  { key: 'kind', label: 'Subtítulo (aparece embaixo do nome no card)', value: it.kind || '', max: 120 },
-  { key: 'desc', label: 'Descrição (aparece dentro da página)', type: 'textarea', value: it.desc || '' },
-  { key: 'ig', label: 'Instagram', hint: 'Só o @ (ex.: camilyschutz). Deixe vazio para não mostrar.', value: it.ig || '', max: 60 },
-  ...(top ? [{ key: 'cover', label: 'Foto de capa do card', type: 'image', value: it.cover || '' }] : [])
+  { key: 'name', label: 'Nome (opcional)', value: it.name, max: 120 },
+  { key: 'kind', label: 'Subtítulo (opcional — aparece embaixo do nome no card)', value: it.kind || '', max: 120 },
+  { key: 'desc', label: 'Descrição (opcional — aparece dentro da página)', type: 'textarea', value: it.desc || '' },
+  { key: 'ig', label: 'Instagram (opcional)', hint: 'Só o @ (ex.: camilyschutz).', value: it.ig || '', max: 60 },
+  ...(top ? [{ key: 'cover', label: 'Foto de capa do card (opcional)', type: 'image', value: it.cover || '' }] : [])
 ];
 async function applyCover(it, v) {
   if (v.remove) { const old = mediaOf(it.cover); delete it.cover; return old; }
@@ -261,7 +575,7 @@ async function applyCover(it, v) {
 const actions = {
   async 'new-client'() {
     const v = await modal({ title: 'Novo cliente', ok: 'Criar', fields: infoFields({ name: '' }, true) }); if (!v) return;
-    const it = { id: uniqueId(v.name), name: v.name, mono: initials(v.name), kind: v.kind, desc: v.desc, works: [] };
+    const it = { id: uniqueId(v.name), name: v.name, mono: initials(v.name) || 'N', kind: v.kind, desc: v.desc, works: [] };
     if (igClean(v.ig)) it.ig = igClean(v.ig);
     try { await applyCover(it, v.cover); } catch (e) { return; }
     PF.clients.push(it); PF.refresh(); await save();
@@ -279,7 +593,7 @@ const actions = {
   async 'del-item'(id) {
     const hit = PF.lookup(id); if (!hit) return; const it = hit.k || hit.c;
     const n = (it.works || []).length + (it.children || []).reduce((a, k) => a + (k.works || []).length, 0);
-    if (!await confirmBox('Excluir "' + it.name + '"?', n ? `Isso apaga ${n} trabalho(s) e os arquivos enviados dele. Não dá para desfazer.` : 'Não dá para desfazer.')) return;
+    if (!await confirmBox('Excluir ' + (it.name ? '"' + it.name + '"' : 'este item') + '?', n ? `Isso apaga ${n} trabalho(s) e os arquivos enviados dele. Não dá para desfazer.` : 'Não dá para desfazer.')) return;
     const ids = mediaInItem(it);
     const { list, parent } = parentList(id);
     list.splice(list.indexOf(it), 1);
@@ -291,18 +605,43 @@ const actions = {
     const it = findItem(id); if (!it) return;
     const files = await pickFiles('image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.m4v,.webm', true); if (!files.length) return;
     it.works = it.works || [];
+    const nImg = files.filter(f => f.type.startsWith('image/')).length; let k = 0;
     for (const f of files) {
       try {
-        const up = await upload(f);
-        it.works.push({ t: up.t, title: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 120), r: up.r, src: up.src });
+        let up;
+        if (f.type.startsWith('image/')) {
+          k++;
+          const pre = await cropFile(f, { ratio: '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto', counter: nImg > 1 ? `${k} de ${nImg}` : '' });
+          if (!pre) { if (nImg > 1) toast('Envio cancelado nas fotos restantes.'); break; }
+          up = await upload(f, pre); up.t = 'design';
+        } else up = await upload(f);
+        it.works.push({ t: up.t, title: '', r: up.r, src: up.src });
         PF.refresh(); await save();
       } catch (e) { /* aviso já mostrado */ }
     }
   },
+  async 'add-carousel'(id) {
+    const it = findItem(id); if (!it) return;
+    const r = await carouselEditor(null); if (!r) return;
+    (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images });
+    PF.refresh(); await save();
+  },
+  async 'crop-work'(id, i) {
+    const it = findItem(id); const w = it && it.works[i]; if (!w || !w.src) return;
+    const r = await cropDialog({ source: w.src, ratio: w.r, ratios: RATIOS, kind: 'tile', title: 'Ajustar o recorte' }); if (!r) return;
+    try {
+      const src = await sendBlob(r.blob, 'recorte.jpg', r.type, 'Enviando foto…'); const old = mediaOf(w.src);
+      w.src = src; w.r = r.ratio; PF.refresh(); await save(); dropMedia(old);
+    } catch (e) {}
+  },
+  async 'edit-footer'() {
+    const r = await footerEditor(PF.footer); if (!r) return;
+    try { const d = await api('PUT', '/api/footer', { footer: r }); PF.footer = d.footer; PF.refresh(); toast('Rodapé salvo ✓', 'ok', 1800); } catch (e) { toast(e.message, 'bad', 6000); }
+  },
   async 'add-canva'(id) {
     const it = findItem(id); if (!it) return;
     const v = await modal({ title: 'Adicionar link do Canva', ok: 'Adicionar', fields: [
-      { key: 'title', label: 'Título', required: true, max: 120 },
+      { key: 'title', label: 'Título (opcional)', max: 120 },
       { key: 'url', label: 'Link de compartilhamento do Canva', type: 'url', required: true, placeholder: 'https://canva.link/...' },
       { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: '16/9' }] }); if (!v) return;
     if (!/^https:\/\//.test(v.url)) return toast('O link precisa começar com https://', 'bad');
@@ -311,13 +650,19 @@ const actions = {
   },
   async 'new-sub'(id) {
     const c = findItem(id); if (!c) return;
-    const v = await modal({ title: 'Novo projeto dentro de "' + c.name + '"', ok: 'Criar', fields: infoFields({ name: '' }, false).filter(f => f.key !== 'ig') }); if (!v) return;
-    (c.children = c.children || []).push({ id: uniqueId(v.name), name: v.name, mono: initials(v.name), kind: v.kind, desc: v.desc, works: [] });
+    const v = await modal({ title: 'Novo projeto' + (c.name ? ' dentro de "' + c.name + '"' : ''), ok: 'Criar', fields: infoFields({ name: '' }, false).filter(f => f.key !== 'ig') }); if (!v) return;
+    (c.children = c.children || []).push({ id: uniqueId(v.name), name: v.name, mono: initials(v.name) || 'P', kind: v.kind, desc: v.desc, works: [] });
     PF.refresh(); await save();
   },
   async 'edit-work'(id, i) {
     const it = findItem(id); const w = it && it.works[i]; if (!w) return;
-    const f = [{ key: 'title', label: 'Título', value: w.title, required: true, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: w.r }];
+    if (w.t === 'carousel') {
+      const r = await carouselEditor(w); if (!r) return;
+      const old = (w.images || []).filter(u => !r.images.includes(u)).flatMap(mediaOf);
+      w.title = r.title; w.r = r.ratio; w.images = r.images;
+      PF.refresh(); await save(); dropMedia(old); return;
+    }
+    const f = [{ key: 'title', label: 'Título (opcional)', value: w.title, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: w.r }];
     if (w.canva) f.splice(1, 0, { key: 'url', label: 'Link do Canva', type: 'url', value: w.canva, required: true });
     const v = await modal({ title: 'Editar trabalho', fields: f }); if (!v) return;
     w.title = v.title; w.r = v.r; if (w.canva && /^https:\/\//.test(v.url)) w.canva = v.url;
@@ -327,15 +672,17 @@ const actions = {
     const it = findItem(id); const w = it && it.works[i]; if (!w) return;
     const [f] = await pickFiles('image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.m4v,.webm', false); if (!f) return;
     try {
-      const up = await upload(f); const old = mediaOf(w.src);
+      let pre = null;
+      if (f.type.startsWith('image/')) { pre = await cropFile(f, { ratio: w.r || '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto' }); if (!pre) return; }
+      const up = await upload(f, pre); if (pre) up.t = 'design'; const old = mediaOf(w.src);
       w.src = up.src; w.t = up.t; w.r = up.r; delete w.canva;
       PF.refresh(); await save(); dropMedia(old);
     } catch (e) {}
   },
   async 'del-work'(id, i) {
     const it = findItem(id); const w = it && it.works[i]; if (!w) return;
-    if (!await confirmBox('Excluir "' + w.title + '"?', 'O arquivo enviado também será apagado. Não dá para desfazer.')) return;
-    const old = mediaOf(w.src); it.works.splice(i, 1);
+    if (!await confirmBox('Excluir ' + (w.title ? '"' + w.title + '"' : 'este trabalho') + '?', 'O arquivo enviado também será apagado. Não dá para desfazer.')) return;
+    const old = mediaOfWork(w); it.works.splice(i, 1);
     PF.refresh(); await save(); dropMedia(old);
   },
   async password() {
@@ -362,14 +709,21 @@ window.PF_ADMIN = {
   newCard: () => `<li class="pf-a"><button type="button" class="pf-newcard" data-act="new-client"><b>+</b>Novo cliente</button></li>`,
   head: (item, isSub) => `<div class="pf-a pf-head">
     ${btn('add-files', '+ Foto ou vídeo', item.id, '', 'primary')}
+    ${btn('add-carousel', '+ Carrossel', item.id)}
     ${btn('add-canva', '+ Link do Canva', item.id)}
     ${isSub ? '' : btn('new-sub', '+ Novo projeto (galeria)', item.id)}
     ${btn('edit-item', '✎ Editar informações', item.id)}
     ${btn('del-item', '🗑 Excluir', item.id, '', 'danger')}</div>`,
-  tile: (item, i) => `<div class="pf-a pf-tile-tools">
-    ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar título e formato"`)}
-    ${btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
-    ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`
+  tile: (item, i) => {
+    const w = item.works[i] || {}; const car = w.t === 'carousel';
+    const crop = !car && w.t !== 'video' && w.src && !w.canva;
+    return `<div class="pf-a pf-tile-tools">
+    ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
+    ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}
+    ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
+    ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`;
+  },
+  footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`
 };
 
 /* ---------- barra do administrador ---------- */
