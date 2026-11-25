@@ -30,6 +30,7 @@ async function schema(db) {
     db.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)'),
     db.prepare('CREATE TABLE IF NOT EXISTS attempts (ip TEXT NOT NULL, ts INTEGER NOT NULL)'),
     db.prepare('CREATE TABLE IF NOT EXISTS docs (key TEXT PRIMARY KEY, value TEXT NOT NULL, rev INTEGER NOT NULL, updated INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS parts (owner TEXT NOT NULL, ver TEXT NOT NULL, idx INTEGER NOT NULL, value TEXT NOT NULL, PRIMARY KEY (owner, ver, idx))'),
     db.prepare('CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL, ts INTEGER NOT NULL)'),
     db.prepare('CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY, name TEXT, type TEXT NOT NULL, size INTEGER NOT NULL, chunks INTEGER NOT NULL, done INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)'),
   ]);
@@ -218,6 +219,23 @@ async function loadSeed(env) {
   return (await env.ASSETS.fetch(new Request('https://assets.local/seed.json'))).json();
 }
 const videoCount = c => [...(c.works || []), ...(c.children || []).flatMap(k => k.works || [])].filter(w => w.t === 'video').length;
+/* ---------- textos grandes: o conteúdo do site é guardado em pedaços quando passa do limite de 2 MB de uma linha do banco ---------- */
+const PART = 400000;
+async function readBig(env, v) {
+  const m = /^@@parts:([a-z0-9]+):([a-z0-9]+):(\d+)$/.exec(v);
+  if (!m) return v;
+  const r = await env.DB.prepare('SELECT value FROM parts WHERE owner = ? AND ver = ? ORDER BY idx').bind(m[1], m[2]).all();
+  if (r.results.length !== Number(m[3])) throw new Error('conteúdo incompleto no banco');
+  return r.results.map(x => x.value).join('');
+}
+function planBig(env, owner, ver, str) {
+  if (str.length <= PART) return { value: str, stmts: [] };
+  const n = Math.ceil(str.length / PART), stmts = [];
+  for (let i = 0; i < n; i++) stmts.push(env.DB.prepare('INSERT INTO parts (owner, ver, idx, value) VALUES (?,?,?,?)').bind(owner, ver, i, str.slice(i * PART, (i + 1) * PART)));
+  return { value: `@@parts:${owner}:${ver}:${n}`, stmts };
+}
+const sweepParts = env => env.DB.prepare("DELETE FROM parts WHERE NOT EXISTS (SELECT 1 FROM docs d WHERE d.value LIKE '@@parts:' || parts.owner || ':' || parts.ver || ':%') AND NOT EXISTS (SELECT 1 FROM history h WHERE h.value LIKE '@@parts:' || parts.owner || ':' || parts.ver || ':%')").run();
+
 async function loadContent(env) {
   let row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
   const f = await env.DB.prepare("SELECT value FROM docs WHERE key = 'footer'").first();
@@ -239,7 +257,7 @@ async function loadContent(env) {
   }
   const footer = f ? JSON.parse(f.value) : cleanFooter((await getSeed()).footer);
   const settings = { ...DEFAULT_SETTINGS, ...(st ? JSON.parse(st.value) : ((await getSeed()).settings || {})) };
-  return { clients: JSON.parse(row.value), rev: row.rev, footer, settings };
+  return { clients: JSON.parse(await readBig(env, row.value)), raw: row.value, rev: row.rev, footer, settings };
 }
 
 async function deleteMedia(env, id) {
@@ -417,17 +435,20 @@ const handle = async (req, env) => {
 
       if (path === '/api/content' && method === 'PUT') {
         const raw = await req.text();
-        if (raw.length > 2_000_000) return fail(413, 'Conteúdo grande demais.');
+        if (raw.length > 60_000_000) return fail(413, 'Conteúdo grande demais.');
         let body; try { body = JSON.parse(raw); } catch { return fail(400, 'JSON inválido.'); }
         let clients; try { clients = cleanContent(body.clients); } catch (e) { return fail(400, e.message); }
-        if (JSON.stringify(clients).length > 1900000) return fail(413, 'O site chegou no limite técnico do banco de dados (cerca de 2 MB de textos e links). Apague trabalhos que não usa mais.');
         const cur = await loadContent(env);
         if (Number(body.rev) !== cur.rev) return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.', { rev: cur.rev });
         const t = now();
-        const res = await env.DB.prepare("UPDATE docs SET value = ?, rev = rev + 1, updated = ? WHERE key = 'content' AND rev = ?").bind(JSON.stringify(clients), t, cur.rev).run();
-        if (!res.meta.changes) return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.');
-        await env.DB.prepare('INSERT INTO history (value, ts) VALUES (?,?)').bind(JSON.stringify(cur.clients), t).run();
+        const ver = t.toString(36) + Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, '0')).join('');
+        const plan = planBig(env, 'content', ver, JSON.stringify(clients));
+        const upd = env.DB.prepare("UPDATE docs SET value = ?, rev = rev + 1, updated = ? WHERE key = 'content' AND rev = ?").bind(plan.value, t, cur.rev);
+        const out = await env.DB.batch([...plan.stmts, upd]);
+        if (!out[out.length - 1].meta.changes) { await env.DB.prepare('DELETE FROM parts WHERE owner = ? AND ver = ?').bind('content', ver).run(); return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.'); }
+        await env.DB.prepare('INSERT INTO history (value, ts) VALUES (?,?)').bind(cur.raw, t).run();
         await env.DB.prepare('DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY id DESC LIMIT 30)').run();
+        await sweepParts(env);
         // limpeza: apaga arquivos enviados que não aparecem mais em lugar nenhum (com 2h de folga para uploads em andamento)
         const used = mediaIds(clients);
         const stRow = await env.DB.prepare("SELECT value FROM docs WHERE key = 'settings'").first();
