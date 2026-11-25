@@ -225,7 +225,7 @@ async function reload() {
 }
 function allMediaInUse() {
   const used = new Set(); const add = v => mediaOf(v).forEach(x => used.add(x));
-  const addW = w => { add(w.src); (w.images || []).forEach(add); };
+  const addW = w => { add(w.src); add(w.poster); (w.images || []).forEach(add); };
   add(PF.settings.bg); add((PF.settings.about || {}).photo);
   for (const c of PF.clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
   return used;
@@ -236,7 +236,7 @@ async function dropMedia(ids) {
   usage();
 }
 const mediaOf = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); return m ? [m[1]] : []; };
-const mediaOfWork = w => [...mediaOf(w.src), ...(w.images || []).flatMap(mediaOf)];
+const mediaOfWork = w => [...mediaOf(w.src), ...mediaOf(w.poster), ...(w.images || []).flatMap(mediaOf)];
 const mediaInWorks = ws => (ws || []).flatMap(mediaOfWork);
 const mediaInItem = it => [...mediaOf(it.cover), ...mediaInWorks(it.works), ...(it.children || []).flatMap(k => mediaInWorks(k.works))];
 
@@ -435,6 +435,35 @@ function pickFiles(accept, multiple) {
   });
 }
 
+/* escolher um frame do vídeo como capa */
+function posterPicker(w) {
+  return new Promise(resolve => {
+    const sh = shell('wide'); const box = sh.box;
+    const h = document.createElement('h3'); h.textContent = 'Escolher capa do vídeo'; box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Arraste a barra (ou use o play) até o momento que você quer e clique em “Usar este frame”.'; box.append(p0);
+    const v = document.createElement('video'); v.src = w.src; v.controls = true; v.playsInline = true; v.preload = 'auto'; v.muted = true;
+    v.style.cssText = 'width:100%;max-height:52vh;background:#000;border-radius:10px;display:block'; box.append(v);
+    const rg = document.createElement('input'); rg.type = 'range'; rg.min = 0; rg.max = 1000; rg.value = 0; rg.style.cssText = 'width:100%;margin:12px 0 4px'; rg.disabled = true;
+    const tm = document.createElement('small'); tm.style.opacity = '.75'; tm.textContent = 'Carregando vídeo…'; box.append(rg, tm);
+    const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(2).padStart(5, '0');
+    v.onloadedmetadata = () => { rg.disabled = false; tm.textContent = fmt(0) + ' / ' + fmt(v.duration); if (w.poster) tm.textContent += ' · este vídeo já tem capa escolhida'; };
+    rg.oninput = () => { if (v.duration) { v.pause(); v.currentTime = (rg.value / 1000) * v.duration; } };
+    v.ontimeupdate = () => { if (v.duration) { if (!v.paused) rg.value = Math.round(v.currentTime / v.duration * 1000); tm.textContent = fmt(v.currentTime) + ' / ' + fmt(v.duration); } };
+    v.onerror = () => { tm.textContent = 'Não consegui abrir este vídeo no navegador.'; };
+    const err = document.createElement('div'); err.className = 'err'; box.append(err);
+    const done = x => { v.pause(); v.removeAttribute('src'); v.load(); sh.close(); resolve(x); };
+    sh.ent.cancel = () => done(null);
+    const use = mkBtn('Usar este frame', 'primary', () => {
+      if (!v.videoWidth) { err.textContent = 'O vídeo ainda não carregou.'; return; }
+      v.pause(); const k = Math.min(1, 1280 / v.videoWidth); const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+      try { c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); } catch (e) { err.textContent = 'Não consegui capturar este frame.'; return; }
+      c.toBlob(b => { if (!b) { err.textContent = 'Não consegui capturar este frame.'; return; } done({ blob: b }); }, 'image/jpeg', 0.86);
+    });
+    const auto = mkBtn('Voltar à capa automática', '', () => done({ blob: null })); auto.disabled = !w.poster; if (!w.poster) auto.style.opacity = .35;
+    const rw = row(auto, mkBtn('Cancelar', '', () => done(null)), use); rw.style.justifyContent = 'space-between'; box.append(rw);
+    box.onsubmit = e => e.preventDefault();
+  });
+}
 /* ---------- recorte com prévia ---------- */
 const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Não consegui abrir a imagem.')); i.src = src; });
 const ratioNum = r => { const [a, b] = r.split('/').map(Number); return a / b; };
@@ -766,14 +795,14 @@ const THEME_GROUPS = [
     ['c_accent', 'Cor de destaque', 'Botão Fechar ao passar o mouse, contorno ao navegar com o teclado, barras'],
     ['c_detail', 'Cor dos detalhes', 'Bolinhas, borda ao passar o mouse, etiquetas de vídeo e botão de play'],
     ['c_line', 'Cor das linhas e bordas'], ['c_veil', 'Cor do fundo (sobre a foto)']]],
-  ['Título do topo', '"Ideias em movimento."', [['f_hero', 'Fonte'], ['c_hero', 'Cor do texto'], ['c_mov', 'Cor da palavra em destaque'], ['c_dot', 'Cor da pontuação final']]],
-  ['Títulos das seções e das páginas', '"Clientes e projetos" e o nome grande de cada página aberta', [['f_sec', 'Fonte'], ['c_sec', 'Cor']]],
-  ['Cards da página inicial', '', [['f_card', 'Fonte do nome'], ['c_card', 'Cor do nome'], ['f_kind', 'Fonte do subtítulo'], ['c_kind', 'Cor do subtítulo'], ['f_chip', 'Fonte das etiquetas (▶ vídeos, designs)'], ['c_chip', 'Cor do texto das etiquetas'], ['c_cardbg', 'Cor do fundo dos cards'], ['c_g1', 'Degradê dos cards sem foto — cor 1'], ['c_g2', 'Degradê dos cards sem foto — cor 2']]],
-  ['@ do Instagram', 'O @ que aparece dentro das páginas', [['f_ig', 'Fonte'], ['c_ig', 'Cor']]],
-  ['Textos dentro das páginas', '', [['f_lead', 'Fonte da descrição'], ['c_lead', 'Cor da descrição'], ['f_blk', 'Fonte dos títulos de bloco (Vídeos, Designs…)'], ['c_blk', 'Cor dos títulos de bloco'], ['f_cap', 'Fonte das legendas dos trabalhos'], ['c_cap', 'Cor das legendas dos trabalhos']]],
-  ['Subprojetos', 'Os quadrinhos de projetos dentro de uma página', [['f_sub', 'Fonte do nome'], ['c_sub', 'Cor do nome']]],
-  ['Caminho e botão Fechar', 'Barra de cima das páginas abertas', [['f_nav', 'Fonte'], ['c_nav', 'Cor do caminho']]],
-  ['Sobre mim', 'O botão e o texto do card que abre. Largura, foto, posição e fundo do card ficam no botão ✎ Editar, ao lado de “Sobre mim”.', [['f_abbtn', 'Fonte do botão'], ['c_abbtn', 'Cor do botão'], ['f_abt', 'Fonte do título do card'], ['c_abt', 'Cor do título do card'], ['f_abs', 'Fonte dos subtítulos'], ['c_abs', 'Cor dos subtítulos'], ['f_abx', 'Fonte do texto'], ['c_abx', 'Cor do texto']]],
+  ['Título do topo', '"Ideias em movimento."', [['z_hero', 'Tamanho'], ['f_hero', 'Fonte'], ['c_hero', 'Cor do texto'], ['c_mov', 'Cor da palavra em destaque'], ['c_dot', 'Cor da pontuação final']]],
+  ['Títulos das seções e das páginas', '"Clientes e projetos" e o nome grande de cada página aberta', [['z_sec', 'Tamanho de “Clientes e projetos”'], ['z_pg', 'Tamanho do nome grande da página aberta'], ['f_sec', 'Fonte'], ['c_sec', 'Cor']]],
+  ['Cards da página inicial', '', [['f_card', 'Fonte do nome'], ['c_card', 'Cor do nome'], ['z_card', 'Tamanho do nome'], ['z_kind', 'Tamanho do subtítulo'], ['f_kind', 'Fonte do subtítulo'], ['f_kind', 'Fonte do subtítulo'], ['c_kind', 'Cor do subtítulo'], ['f_chip', 'Fonte das etiquetas (▶ vídeos, designs)'], ['c_chip', 'Cor do texto das etiquetas'], ['c_cardbg', 'Cor do fundo dos cards'], ['c_g1', 'Degradê dos cards sem foto — cor 1'], ['c_g2', 'Degradê dos cards sem foto — cor 2']]],
+  ['@ do Instagram', 'O @ que aparece dentro das páginas', [['z_ig', 'Tamanho'], ['f_ig', 'Fonte'], ['f_ig', 'Fonte'], ['c_ig', 'Cor']]],
+  ['Textos dentro das páginas', '', [['z_lead', 'Tamanho da descrição'], ['z_blk', 'Tamanho dos títulos de bloco'], ['z_cap', 'Tamanho das legendas'], ['f_lead', 'Fonte da descrição'], ['f_lead', 'Fonte da descrição'], ['c_lead', 'Cor da descrição'], ['f_blk', 'Fonte dos títulos de bloco (Vídeos, Designs…)'], ['c_blk', 'Cor dos títulos de bloco'], ['f_cap', 'Fonte das legendas dos trabalhos'], ['c_cap', 'Cor das legendas dos trabalhos']]],
+  ['Subprojetos', 'Os quadrinhos de projetos dentro de uma página', [['z_sub', 'Tamanho do nome'], ['f_sub', 'Fonte do nome'], ['f_sub', 'Fonte do nome'], ['c_sub', 'Cor do nome']]],
+  ['Caminho e botão Fechar', 'Barra de cima das páginas abertas', [['z_nav', 'Tamanho'], ['f_nav', 'Fonte'], ['f_nav', 'Fonte'], ['c_nav', 'Cor do caminho']]],
+  ['Sobre mim', 'O botão e o texto do card que abre. Largura, foto, posição e fundo do card ficam no botão ✎ Editar, ao lado de “Sobre mim”.', [['z_abbtn', 'Tamanho do botão'], ['z_abt', 'Tamanho do título do card'], ['z_abs', 'Tamanho dos subtítulos'], ['z_abx', 'Tamanho do texto'], ['f_abbtn', 'Fonte do botão'], ['f_abbtn', 'Fonte do botão'], ['c_abbtn', 'Cor do botão'], ['f_abt', 'Fonte do título do card'], ['c_abt', 'Cor do título do card'], ['f_abs', 'Fonte dos subtítulos'], ['c_abs', 'Cor dos subtítulos'], ['f_abx', 'Fonte do texto'], ['c_abx', 'Cor do texto']]],
   ['Rodapé', '', [['f_foot', 'Fonte'], ['c_foot', 'Cor do texto e ícones'], ['c_f1', 'Fundo — cor 1'], ['c_f2', 'Fundo — cor 2']]]
 ];
 const T_VAR = { c_veil: '--veil', c_cardbg: '--card-rgb', c_line: '--line-rgb', c_ink: '--ink', c_muted: '--muted', c_accent: '--accent', c_detail: '--detail', c_hero: '--t-hero', c_mov: '--t-mov', c_dot: '--t-dot', c_sec: '--t-sec', c_card: '--t-card', c_kind: '--t-kind', c_lead: '--t-lead', c_ig: '--t-ig', c_chip: '--t-chip', c_sub: '--t-sub', c_blk: '--t-blk', c_cap: '--t-cap', c_nav: '--t-nav', c_foot: '--t-foot', c_f1: '--f1', c_f2: '--f2', c_g1: '--g1', c_g2: '--g2', c_abbtn: '--t-abbtn', c_abt: '--t-abt', c_abs: '--t-abs', c_abx: '--t-abx' };
@@ -823,7 +852,7 @@ const PV = {
   line: '<div style="width:100%;border:1px solid rgba(var(--line-rgb),.24);border-radius:8px;padding:6px 10px;font-size:.85rem">Borda e linhas</div>',
   veil: '<div style="width:100%;border-radius:8px;padding:10px;font-size:.85rem;background:linear-gradient(rgba(var(--veil),.8),rgba(var(--veil),.8)),linear-gradient(90deg,#c0a,#0ad,#fa0)">Fundo do site sobre a foto</div>'
 };
-const PV_OF = { f_display: 'disp', f_body: 'body', c_ink: 'ink', c_muted: 'muted', c_accent: 'acc', c_detail: 'det', c_line: 'line', c_veil: 'veil', f_hero: 'hero', c_hero: 'hero', c_mov: 'hero', c_dot: 'hero', f_sec: 'sec', c_sec: 'sec', f_card: 'card', c_card: 'card', f_kind: 'kind', c_kind: 'kind', f_chip: 'chip', c_chip: 'chip', c_cardbg: 'cardbg', c_g1: 'grad', c_g2: 'grad', f_ig: 'ig', c_ig: 'ig', f_lead: 'lead', c_lead: 'lead', f_blk: 'blk', c_blk: 'blk', f_cap: 'cap', c_cap: 'cap', f_sub: 'sub', c_sub: 'sub', f_nav: 'nav', c_nav: 'nav', f_foot: 'foot', c_foot: 'foot', c_f1: 'foot', c_f2: 'foot', f_abbtn: 'abbtn', c_abbtn: 'abbtn', f_abt: 'abt', c_abt: 'abt', f_abs: 'abs', c_abs: 'abs', f_abx: 'abx', c_abx: 'abx' };
+const PV_OF = { z_hero:'hero', z_sec:'sec', z_pg:'sec', z_card:'card', z_kind:'kind', z_lead:'lead', z_blk:'blk', z_cap:'cap', z_sub:'sub', z_nav:'nav', z_ig:'ig', z_abbtn:'abbtn', z_abt:'abt', z_abs:'abs', z_abx:'abx', f_display: 'disp', f_body: 'body', c_ink: 'ink', c_muted: 'muted', c_accent: 'acc', c_detail: 'det', c_line: 'line', c_veil: 'veil', f_hero: 'hero', c_hero: 'hero', c_mov: 'hero', c_dot: 'hero', f_sec: 'sec', c_sec: 'sec', f_card: 'card', c_card: 'card', f_kind: 'kind', c_kind: 'kind', f_chip: 'chip', c_chip: 'chip', c_cardbg: 'cardbg', c_g1: 'grad', c_g2: 'grad', f_ig: 'ig', c_ig: 'ig', f_lead: 'lead', c_lead: 'lead', f_blk: 'blk', c_blk: 'blk', f_cap: 'cap', c_cap: 'cap', f_sub: 'sub', c_sub: 'sub', f_nav: 'nav', c_nav: 'nav', f_foot: 'foot', c_foot: 'foot', c_f1: 'foot', c_f2: 'foot', f_abbtn: 'abbtn', c_abbtn: 'abbtn', f_abt: 'abt', c_abt: 'abt', f_abs: 'abs', c_abs: 'abs', f_abx: 'abx', c_abx: 'abx' };
 /* seletor de fonte: cada opção aparece escrita na própria fonte */
 function fontPicker(onPick, state) {
   const wrap = document.createElement('div'); wrap.className = 'fp';
@@ -864,7 +893,13 @@ function themeEditor(current) {
         const lb = document.createElement('span'); lb.textContent = label; if (tip) lb.title = tip; r.append(lb);
         const reset = mkBtn('↺', '', () => { delete theme[key]; live(); }); reset.title = 'Voltar ao padrão deste item';
         let inp;
-        if (key[0] === 'f') {
+        if (key[0] === 'z') {
+          inp = document.createElement('input'); inp.type = 'range'; inp.min = 50; inp.max = 300; inp.step = 5; inp.value = 100;
+          const lab = document.createElement('span'); lab.style.opacity = '.7';
+          inp.oninput = () => { theme[key] = String(inp.value); live(); };
+          r.append(inp, lab); r.hexEl = lab;
+          if (key === 'z_abbtn') { const eq = mkBtn('= Clientes e projetos', '', () => { theme[key] = '=sec'; live(); }); eq.title = 'Deixa o “Sobre mim” do mesmo tamanho de “Clientes e projetos”'; eq.style.margin = '6px 0 0'; eq.style.padding = '4px 12px'; r.eq = eq; }
+        } else if (key[0] === 'f') {
           inp = fontPicker(v => { if (v) theme[key] = v; else delete theme[key]; live(); }, pstate);
           r.append(inp, document.createElement('span'));
         } else {
@@ -877,10 +912,11 @@ function themeEditor(current) {
         const pv = document.createElement('div'); pv.className = 'th-pv'; pv.innerHTML = PV[PV_OF[key]] || ''; r.append(pv);
         r.sync = () => {
           const set = !!theme[key]; r.classList.toggle('set', set); reset.disabled = !set; reset.style.opacity = set ? 1 : .35;
-          if (key[0] === 'f') inp.set(theme[key] || '');
+          if (key[0] === 'z') { const v = theme[key]; const eq = v === '=sec'; inp.value = eq ? 100 : (v || 100); r.hexEl.textContent = eq ? '=' : (v || 100) + '%'; inp.style.opacity = eq ? .4 : 1; }
+          else if (key[0] === 'f') inp.set(theme[key] || '');
           else { const eff = set ? theme[key] : toHex(getComputedStyle(document.documentElement).getPropertyValue(T_VAR[key]) || THEME_DEFAULT[key] || ''); inp.value = toHex(eff).toLowerCase(); r.hexEl.textContent = toHex(eff); }
         };
-        rows.push(r); g.append(r);
+        rows.push(r); g.append(r); if (r.eq) g.append(r.eq);
       }
       box.append(g);
     }
@@ -993,7 +1029,7 @@ function aboutEditor(current) {
 const mb = n => (n / 1048576).toFixed(n < 1048576 * 10 ? 1 : 0) + ' MB';
 function whereUsed() {
   const m = new Map(); const add = (v, label) => mediaOf(v).forEach(id => { if (!m.has(id)) m.set(id, label); });
-  const addW = (w, l) => { add(w.src, l); (w.images || []).forEach(i => add(i, l)); };
+  const addW = (w, l) => { add(w.src, l); add(w.poster, l + ' (capa do vídeo)'); (w.images || []).forEach(i => add(i, l)); };
   add(PF.settings.bg, 'Fundo do site'); add((PF.settings.about || {}).photo, 'Sobre mim');
   for (const c of PF.clients) { add(c.cover, c.name + ' (capa)'); (c.works || []).forEach(w => addW(w, c.name)); for (const k of c.children || []) (k.works || []).forEach(w => addW(w, c.name + ' › ' + k.name)); }
   return m;
@@ -1108,6 +1144,16 @@ const actions = {
     (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images, ...(g ? { g } : {}) });
     PF.refresh(); await save();
   },
+  async 'pick-poster'(id, i) {
+    const it = findItem(id); const w = it && it.works[i]; if (!w || !w.src || w.t !== 'video') return;
+    const r = await posterPicker(w); if (!r) return;
+    try {
+      let src = ''; if (r.blob) src = await sendBlob(r.blob, 'capa.jpg', 'image/jpeg', 'Enviando capa…');
+      const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2 || w2.src !== w.src) throw new Error('Não achei o vídeo. Atualize a página e tente de novo.');
+      const old = mediaOf(w2.poster); if (src) w2.poster = src; else delete w2.poster;
+      PF.refresh(); await save(); dropMedia(old);
+    } catch (e) { if (!e.shown && !(e instanceof ApiError) && !e.cancelled) toast(e.message || 'Erro ao trocar a capa.', 'bad', 7000); }
+  },
   async 'crop-work'(id, i) {
     const it = findItem(id); const w = it && it.works[i]; if (!w || !w.src) return;
     const r = await cropDialog({ source: w.src, ratio: w.r, ratios: RATIOS, kind: 'tile', title: 'Ajustar o recorte' }); if (!r) return;
@@ -1210,9 +1256,9 @@ const actions = {
     try {
       let pre = null;
       if (f.type.startsWith('image/')) { pre = await cropFile(f, { ratio: w.r || '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto' }); if (!pre) return; }
-      const up = await upload(f, pre); if (pre) up.t = 'design'; const old = mediaOf(w.src);
+      const up = await upload(f, pre); if (pre) up.t = 'design'; const old = [...mediaOf(w.src), ...mediaOf(w.poster)];
       const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2) throw new Error('Não achei o trabalho para trocar. Atualize a página e tente de novo.');
-      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva;
+      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva; delete w2.poster;
       PF.refresh(); await save(); dropMedia(old);
     } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao trocar.', 'bad', 7000); }
   },
@@ -1285,6 +1331,7 @@ window.PF_ADMIN = {
     return `<div class="pf-a pf-tile-tools">
     <span class="pf-btn pf-grabw" draggable="true" data-i="${i}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
+    ${w.t === 'video' && w.src ? btn('pick-poster', '🖼 Capa', item.id, `data-i="${i}" title="Escolher um frame do vídeo como capa"`) : ''}
     ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}
     ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
     ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`;

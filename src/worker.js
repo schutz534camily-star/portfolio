@@ -110,6 +110,7 @@ function cleanWork(w) {
     return out;
   }
   if (w.src) { if (!okSrc(w.src)) throw new Error('arquivo inválido'); out.src = w.src; }
+  if (w.poster && t === 'video' && w.src) { if (!okSrc(w.poster)) throw new Error('capa inválida'); out.poster = w.poster; }
   if (w.canva) {
     let u; try { u = new URL(w.canva); } catch { throw new Error('link do Canva inválido'); }
     if (u.protocol !== 'https:') throw new Error('link do Canva inválido');
@@ -149,7 +150,7 @@ function cleanContent(arr) {
 const mediaIds = clients => {
   const s = new Set();
   const add = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); if (m) s.add(m[1]); };
-  const addW = w => { add(w.src); (w.images || []).forEach(add); };
+  const addW = w => { add(w.src); add(w.poster); (w.images || []).forEach(add); };
   for (const c of clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
   return s;
 };
@@ -177,6 +178,7 @@ const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC
 /* aparência: só chaves conhecidas; cores em #RRGGBB; fontes "g:Nome|400;700" (Google) ou "s:Nome" (do sistema) */
 const THEME_COLORS = new Set(['c_veil', 'c_cardbg', 'c_line', 'c_ink', 'c_muted', 'c_accent', 'c_detail', 'c_hero', 'c_mov', 'c_dot', 'c_sec', 'c_card', 'c_kind', 'c_lead', 'c_ig', 'c_chip', 'c_sub', 'c_blk', 'c_cap', 'c_nav', 'c_foot', 'c_f1', 'c_f2', 'c_g1', 'c_g2', 'c_abbtn', 'c_abt', 'c_abs', 'c_abx']);
 const THEME_FONTS = new Set(['f_body', 'f_display', 'f_hero', 'f_sec', 'f_card', 'f_kind', 'f_lead', 'f_ig', 'f_chip', 'f_sub', 'f_blk', 'f_cap', 'f_nav', 'f_foot', 'f_abbtn', 'f_abt', 'f_abs', 'f_abx']);
+const THEME_SIZES = new Set(['z_hero', 'z_sec', 'z_pg', 'z_card', 'z_kind', 'z_lead', 'z_blk', 'z_cap', 'z_sub', 'z_nav', 'z_ig', 'z_abbtn', 'z_abt', 'z_abs', 'z_abx']);
 const FONT_OK = /^(g:[A-Za-z0-9 ]{2,40}\|\d{3}(;\d{3}){0,5}|s:[A-Za-z ]{2,30})$/;
 function cleanTheme(t) {
   const out = {};
@@ -184,6 +186,7 @@ function cleanTheme(t) {
   for (const [k, v] of Object.entries(t)) {
     if (typeof v !== 'string' || !v) continue;
     if (THEME_COLORS.has(k)) { if (!/^#[0-9a-fA-F]{6}$/.test(v)) throw new Error('cor inválida'); out[k] = v.toUpperCase(); }
+    else if (THEME_SIZES.has(k)) { if (!(/^\d{2,3}$/.test(v) && +v >= 50 && +v <= 300) && !(k === 'z_abbtn' && v === '=sec')) throw new Error('tamanho inválido'); out[k] = v; }
     else if (THEME_FONTS.has(k)) { if (!FONT_OK.test(v)) throw new Error('fonte inválida'); out[k] = v; }
   }
   return out;
