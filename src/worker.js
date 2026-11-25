@@ -155,10 +155,11 @@ function cleanFooter(arr) {
 }
 
 /* ---------- ajustes do site ---------- */
-const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC: '.', tabTitle: 'Portfólio de Design e Vídeo', theme: {} };
+const DEFAULT_ABOUT = { label: 'Sobre mim', title: 'Sobre mim', blocks: [], photo: '', ratio: '4/5', shape: 'soft', size: 34, h: 'left', v: 'top', width: 100, align: 'center', bg: '#6F0085', alpha: 55 };
+const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC: '.', tabTitle: 'Portfólio de Design e Vídeo', theme: {}, about: DEFAULT_ABOUT };
 /* aparência: só chaves conhecidas; cores em #RRGGBB; fontes "g:Nome|400;700" (Google) ou "s:Nome" (do sistema) */
-const THEME_COLORS = new Set(['c_veil', 'c_cardbg', 'c_line', 'c_ink', 'c_muted', 'c_accent', 'c_detail', 'c_hero', 'c_mov', 'c_dot', 'c_sec', 'c_card', 'c_kind', 'c_lead', 'c_ig', 'c_chip', 'c_sub', 'c_blk', 'c_cap', 'c_nav', 'c_foot', 'c_f1', 'c_f2', 'c_g1', 'c_g2']);
-const THEME_FONTS = new Set(['f_body', 'f_display', 'f_hero', 'f_sec', 'f_card', 'f_kind', 'f_lead', 'f_ig', 'f_chip', 'f_sub', 'f_blk', 'f_cap', 'f_nav', 'f_foot']);
+const THEME_COLORS = new Set(['c_veil', 'c_cardbg', 'c_line', 'c_ink', 'c_muted', 'c_accent', 'c_detail', 'c_hero', 'c_mov', 'c_dot', 'c_sec', 'c_card', 'c_kind', 'c_lead', 'c_ig', 'c_chip', 'c_sub', 'c_blk', 'c_cap', 'c_nav', 'c_foot', 'c_f1', 'c_f2', 'c_g1', 'c_g2', 'c_abbtn', 'c_abt', 'c_abs', 'c_abx']);
+const THEME_FONTS = new Set(['f_body', 'f_display', 'f_hero', 'f_sec', 'f_card', 'f_kind', 'f_lead', 'f_ig', 'f_chip', 'f_sub', 'f_blk', 'f_cap', 'f_nav', 'f_foot', 'f_abbtn', 'f_abt', 'f_abs', 'f_abx']);
 const FONT_OK = /^(g:[A-Za-z0-9 ]{2,40}\|\d{3}(;\d{3}){0,5}|s:[A-Za-z ]{2,30})$/;
 function cleanTheme(t) {
   const out = {};
@@ -170,11 +171,29 @@ function cleanTheme(t) {
   }
   return out;
 }
+const pick = (v, list, def) => (list.includes(v) ? v : def);
+const num = (v, lo, hi, def) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
+function cleanAbout(a) {
+  const d = DEFAULT_ABOUT;
+  if (!a || typeof a !== 'object') return { ...d };
+  const photo = typeof a.photo === 'string' ? a.photo : '';
+  if (photo && !okSrc(photo)) throw new Error('foto do Sobre mim inválida');
+  const blocks = Array.isArray(a.blocks) ? a.blocks : [];
+  if (blocks.length > 12) throw new Error('blocos demais no Sobre mim');
+  return {
+    label: str(a.label, 30) || d.label, title: str(a.title, 120),
+    blocks: blocks.map(b => ({ title: str(b && b.title, 120), text: str(b && b.text, 4000) })).filter(b => b.title || b.text),
+    photo, ratio: RATIO_OK.test(a.ratio) ? a.ratio : d.ratio, shape: pick(a.shape, ['soft', 'round', 'square'], d.shape),
+    size: num(a.size, 15, 60, d.size), h: pick(a.h, ['left', 'center', 'right'], d.h), v: pick(a.v, ['top', 'middle', 'bottom'], d.v),
+    width: num(a.width, 40, 100, d.width), align: pick(a.align, ['left', 'center', 'right'], d.align),
+    bg: /^#[0-9a-fA-F]{6}$/.test(a.bg) ? a.bg.toUpperCase() : d.bg, alpha: num(a.alpha, 15, 95, d.alpha)
+  };
+}
 function cleanSettings(o) {
   if (!o || typeof o !== 'object') throw new Error('ajustes inválidos');
   const bg = typeof o.bg === 'string' ? o.bg : '';
   if (bg && !okSrc(bg)) throw new Error('imagem de fundo inválida');
-  return { bg, heroA: str(o.heroA, 60), heroB: str(o.heroB, 40), heroC: str(o.heroC, 10), tabTitle: str(o.tabTitle, 80), theme: cleanTheme(o.theme) };
+  return { bg, heroA: str(o.heroA, 60), heroB: str(o.heroB, 40), heroC: str(o.heroC, 10), tabTitle: str(o.tabTitle, 80), theme: cleanTheme(o.theme), about: cleanAbout(o.about) };
 }
 
 /* ---------- conteúdo ---------- */
@@ -352,7 +371,7 @@ export default {
         // limpeza: apaga arquivos enviados que não aparecem mais em lugar nenhum (com 2h de folga para uploads em andamento)
         const used = mediaIds(clients);
         const stRow = await env.DB.prepare("SELECT value FROM docs WHERE key = 'settings'").first();
-        if (stRow) { const m = /^\/media\/([a-f0-9]{16})$/.exec(JSON.parse(stRow.value).bg || ''); if (m) used.add(m[1]); }
+        if (stRow) for (const m of stRow.value.matchAll(/\/media\/([a-f0-9]{16})/g)) used.add(m[1]);
         const all = await env.DB.prepare('SELECT id, created FROM media').all();
         for (const m of all.results) if (!used.has(m.id) && m.created < t - 7200) await deleteMedia(env, m.id);
         return json({ ok: true, rev: cur.rev + 1 });
@@ -367,6 +386,12 @@ export default {
 
       if (path === '/api/settings' && method === 'PUT') {
         const body = await req.json().catch(() => ({}));
+        // quem não mandar "tema" ou "sobre mim" não apaga o que já está salvo
+        if (body.settings && typeof body.settings === 'object' && (body.settings.theme === undefined || body.settings.about === undefined)) {
+          const cur = (await loadContent(env)).settings;
+          if (body.settings.theme === undefined) body.settings.theme = cur.theme;
+          if (body.settings.about === undefined) body.settings.about = cur.about;
+        }
         let settings; try { settings = cleanSettings(body.settings); } catch (e) { return fail(400, e.message); }
         await env.DB.prepare("INSERT INTO docs (key, value, rev, updated) VALUES ('settings', ?, 1, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated = excluded.updated").bind(JSON.stringify(settings), now()).run();
         return json({ ok: true, settings });

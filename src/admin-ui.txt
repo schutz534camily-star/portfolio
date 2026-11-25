@@ -92,6 +92,29 @@ body.pf-on .rodape{padding-bottom:96px}
 .frow .bt{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end}
 .pf-bar,.pf-modal-bg,.pf-toasts,.pf-btn{--ink:#FFF3FC;--muted:#E8C3F2;--accent:#FFC94A;--accent-ink:#2B0034;--line:rgba(255,243,252,.24);--f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;--f-display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif}
 .pf-modal{color:#FFF3FC}
+.pf-modal.about{width:min(920px,100%)}
+.ab-live{position:sticky;top:0;z-index:5;margin:12px 0 4px;padding:12px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(rgba(43,0,52,.85),rgba(43,0,52,.85)),#000;max-height:34vh;overflow:auto}
+.ab-live>small{display:block;color:var(--muted);font-size:.74rem;margin-bottom:8px}
+.ab-grp{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.ab-grp>b{display:block;font-family:var(--f-display);font-size:1.02rem;margin-bottom:6px}
+.ab-blk{display:grid;gap:6px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.25)}
+.ab-blk input,.ab-blk textarea{margin-top:0!important}
+.ab-blk .bt{display:flex;gap:6px;justify-content:flex-end}
+.ab-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ab-range{display:flex;align-items:center;gap:10px;margin-top:6px}
+.ab-range input[type=range]{flex:1;accent-color:var(--accent)}
+.ab-range output{min-width:3.2em;text-align:right;font-weight:600;font-size:.9rem}
+.ab-board{position:relative;margin-top:8px;aspect-ratio:16/9;max-width:420px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.3);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);touch-action:none;user-select:none}
+.ab-cell{border:1px dashed rgba(255,243,252,.2);background:none;color:var(--muted);font-size:.7rem;cursor:pointer;padding:0}
+.ab-cell:hover{background:rgba(255,201,74,.12)}
+.ab-cell.on{background:rgba(255,201,74,.18);border-color:var(--accent)}
+.ab-thumb{position:absolute;width:23%;height:26%;border-radius:8px;background:linear-gradient(145deg,#A524BF,#4A0058);border:2px solid var(--accent);cursor:grab;z-index:2;display:grid;place-items:center;font-size:1.1rem;transition:left .18s,top .18s;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.ab-thumb.drag{transition:none;cursor:grabbing}
+.ab-hint{color:var(--muted);font-size:.8rem;margin-top:6px}
+.ab-photo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
+.ab-photo img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+@media (max-width:640px){.ab-two{grid-template-columns:1fr}}
+
 .pf-modal.theme{width:min(1060px,100%)}
 .th-grp{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
 .th-grp>b{display:block;font-family:var(--f-display);font-size:1.02rem;margin-bottom:2px}
@@ -192,7 +215,7 @@ async function reload() {
 function allMediaInUse() {
   const used = new Set(); const add = v => mediaOf(v).forEach(x => used.add(x));
   const addW = w => { add(w.src); (w.images || []).forEach(add); };
-  add(PF.settings.bg);
+  add(PF.settings.bg); add((PF.settings.about || {}).photo);
   for (const c of PF.clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
   return used;
 }
@@ -714,9 +737,10 @@ const THEME_GROUPS = [
   ['Textos dentro das páginas', '', [['f_lead', 'Fonte da descrição'], ['c_lead', 'Cor da descrição'], ['f_blk', 'Fonte dos títulos de bloco (Vídeos, Designs…)'], ['c_blk', 'Cor dos títulos de bloco'], ['f_cap', 'Fonte das legendas dos trabalhos'], ['c_cap', 'Cor das legendas dos trabalhos']]],
   ['Subprojetos', 'Os quadrinhos de projetos dentro de uma página', [['f_sub', 'Fonte do nome'], ['c_sub', 'Cor do nome']]],
   ['Caminho e botão Fechar', 'Barra de cima das páginas abertas', [['f_nav', 'Fonte'], ['c_nav', 'Cor do caminho']]],
+  ['Sobre mim', 'O botão e o texto do card que abre. Largura, foto, posição e fundo do card ficam no botão ✎ Editar, ao lado de “Sobre mim”.', [['f_abbtn', 'Fonte do botão'], ['c_abbtn', 'Cor do botão'], ['f_abt', 'Fonte do título do card'], ['c_abt', 'Cor do título do card'], ['f_abs', 'Fonte dos subtítulos'], ['c_abs', 'Cor dos subtítulos'], ['f_abx', 'Fonte do texto'], ['c_abx', 'Cor do texto']]],
   ['Rodapé', '', [['f_foot', 'Fonte'], ['c_foot', 'Cor do texto e ícones'], ['c_f1', 'Fundo — cor 1'], ['c_f2', 'Fundo — cor 2']]]
 ];
-const T_VAR = { c_veil: '--veil', c_cardbg: '--card-rgb', c_line: '--line-rgb', c_ink: '--ink', c_muted: '--muted', c_accent: '--accent', c_detail: '--detail', c_hero: '--t-hero', c_mov: '--t-mov', c_dot: '--t-dot', c_sec: '--t-sec', c_card: '--t-card', c_kind: '--t-kind', c_lead: '--t-lead', c_ig: '--t-ig', c_chip: '--t-chip', c_sub: '--t-sub', c_blk: '--t-blk', c_cap: '--t-cap', c_nav: '--t-nav', c_foot: '--t-foot', c_f1: '--f1', c_f2: '--f2', c_g1: '--g1', c_g2: '--g2' };
+const T_VAR = { c_veil: '--veil', c_cardbg: '--card-rgb', c_line: '--line-rgb', c_ink: '--ink', c_muted: '--muted', c_accent: '--accent', c_detail: '--detail', c_hero: '--t-hero', c_mov: '--t-mov', c_dot: '--t-dot', c_sec: '--t-sec', c_card: '--t-card', c_kind: '--t-kind', c_lead: '--t-lead', c_ig: '--t-ig', c_chip: '--t-chip', c_sub: '--t-sub', c_blk: '--t-blk', c_cap: '--t-cap', c_nav: '--t-nav', c_foot: '--t-foot', c_f1: '--f1', c_f2: '--f2', c_g1: '--g1', c_g2: '--g2', c_abbtn: '--t-abbtn', c_abt: '--t-abt', c_abs: '--t-abs', c_abx: '--t-abx' };
 const toHex = v => {
   v = (v || '').trim();
   if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
@@ -749,6 +773,10 @@ const PV = {
   cap: '<div class="cap"><b>Legenda do trabalho</b><span class="tag v">VÍDEO</span></div>',
   sub: '<div class="sub"><span><h4>Nome do subprojeto</h4><p>Descrição curta</p></span></div>',
   nav: '<nav class="crumbs"><button type="button">Portfólio</button><span>›</span><span aria-current="page">Página</span><span class="close">Fechar ✕</span></nav>',
+  abbtn: '<button type="button" class="about-btn" style="pointer-events:none">Sobre mim</button>',
+  abt: '<div class="about-card" style="width:100%;grid-template-columns:1fr;grid-template-areas:\'title\';padding:10px 14px"><h3 class="about-title" style="font-size:1.4rem">Sobre mim</h3></div>',
+  abs: '<div class="about-card" style="width:100%;grid-template-columns:1fr;grid-template-areas:\'text\';padding:10px 14px"><div class="about-text"><div class="about-blk"><h4>Subtítulo do bloco</h4></div></div></div>',
+  abx: '<div class="about-card" style="width:100%;grid-template-columns:1fr;grid-template-areas:\'text\';padding:10px 14px"><div class="about-text"><div class="about-blk"><p>Texto do sobre mim, que pode ter vários parágrafos.</p></div></div></div>',
   foot: '<footer class="rodape"><ul class="contatos"><li><span>Contato do rodapé</span></li></ul></footer>',
   disp: '<h3 style="font-family:var(--f-display);font-size:1.2rem;margin:0;color:var(--ink-live)">Título de exemplo</h3>',
   body: '<p style="font-family:var(--f-body);margin:0;color:var(--ink-live)">Texto de exemplo para ler.</p>',
@@ -759,7 +787,7 @@ const PV = {
   line: '<div style="width:100%;border:1px solid rgba(var(--line-rgb),.24);border-radius:8px;padding:6px 10px;font-size:.85rem">Borda e linhas</div>',
   veil: '<div style="width:100%;border-radius:8px;padding:10px;font-size:.85rem;background:linear-gradient(rgba(var(--veil),.8),rgba(var(--veil),.8)),linear-gradient(90deg,#c0a,#0ad,#fa0)">Fundo do site sobre a foto</div>'
 };
-const PV_OF = { f_display: 'disp', f_body: 'body', c_ink: 'ink', c_muted: 'muted', c_accent: 'acc', c_detail: 'det', c_line: 'line', c_veil: 'veil', f_hero: 'hero', c_hero: 'hero', c_mov: 'hero', c_dot: 'hero', f_sec: 'sec', c_sec: 'sec', f_card: 'card', c_card: 'card', f_kind: 'kind', c_kind: 'kind', f_chip: 'chip', c_chip: 'chip', c_cardbg: 'cardbg', c_g1: 'grad', c_g2: 'grad', f_ig: 'ig', c_ig: 'ig', f_lead: 'lead', c_lead: 'lead', f_blk: 'blk', c_blk: 'blk', f_cap: 'cap', c_cap: 'cap', f_sub: 'sub', c_sub: 'sub', f_nav: 'nav', c_nav: 'nav', f_foot: 'foot', c_foot: 'foot', c_f1: 'foot', c_f2: 'foot' };
+const PV_OF = { f_display: 'disp', f_body: 'body', c_ink: 'ink', c_muted: 'muted', c_accent: 'acc', c_detail: 'det', c_line: 'line', c_veil: 'veil', f_hero: 'hero', c_hero: 'hero', c_mov: 'hero', c_dot: 'hero', f_sec: 'sec', c_sec: 'sec', f_card: 'card', c_card: 'card', f_kind: 'kind', c_kind: 'kind', f_chip: 'chip', c_chip: 'chip', c_cardbg: 'cardbg', c_g1: 'grad', c_g2: 'grad', f_ig: 'ig', c_ig: 'ig', f_lead: 'lead', c_lead: 'lead', f_blk: 'blk', c_blk: 'blk', f_cap: 'cap', c_cap: 'cap', f_sub: 'sub', c_sub: 'sub', f_nav: 'nav', c_nav: 'nav', f_foot: 'foot', c_foot: 'foot', c_f1: 'foot', c_f2: 'foot', f_abbtn: 'abbtn', c_abbtn: 'abbtn', f_abt: 'abt', c_abt: 'abt', f_abs: 'abs', c_abs: 'abs', f_abx: 'abx', c_abx: 'abx' };
 /* seletor de fonte: cada opção aparece escrita na própria fonte */
 function fontPicker(onPick, state) {
   const wrap = document.createElement('div'); wrap.className = 'fp';
@@ -828,6 +856,100 @@ function themeEditor(current) {
     const rw = row(all, mkBtn('Cancelar', '', () => done(null)), ok); rw.style.justifyContent = 'space-between'; box.append(rw);
     box.onsubmit = e => { e.preventDefault(); done({ ...theme }); };
     live();
+  });
+}
+
+/* ---------- Sobre mim ---------- */
+const SHAPES = [['soft', 'Cantos arredondados'], ['round', 'Círculo'], ['square', 'Reto (sem cantos)']];
+const ZONES_H = ['left', 'center', 'right'], ZONES_V = ['top', 'middle', 'bottom'];
+function aboutEditor(current) {
+  return new Promise(resolve => {
+    const sh = shell('wide about'); const box = sh.box;
+    const d = JSON.parse(JSON.stringify(current)); d.blocks = d.blocks || [];
+    const orig = current.photo || ''; let file = null;
+    const h = document.createElement('h3'); h.textContent = 'Editar “Sobre mim”'; box.append(h);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'A prévia embaixo mostra o card do jeito que o visitante vai ver, e muda na hora.'; box.append(p0);
+    const live = document.createElement('div'); live.className = 'ab-live'; const lsm = document.createElement('small'); lsm.textContent = 'Prévia'; const lbox = document.createElement('div'); live.append(lsm, lbox); box.append(live);
+    const redraw = () => { lbox.innerHTML = PF.aboutCardHTML(d); };
+    const grp = t => { const g = document.createElement('div'); g.className = 'ab-grp'; const b = document.createElement('b'); b.textContent = t; g.append(b); box.append(g); return g; };
+    const txt = (v, max, on) => { const i = document.createElement('input'); i.type = 'text'; i.maxLength = max; i.value = v || ''; i.oninput = () => on(i.value); return i; };
+    const range = (min, max, v, on, unit = '%') => { const w = document.createElement('div'); w.className = 'ab-range'; const r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.value = v; const o = document.createElement('output'); o.textContent = v + unit; r.oninput = () => { o.textContent = r.value + unit; on(Number(r.value)); redraw(); }; w.append(r, o); return w; };
+    const sel = (opts, v, on) => { const s = document.createElement('select'); for (const [val, l] of opts) { const o = document.createElement('option'); o.value = val; o.textContent = l; if (val === v) o.selected = true; s.append(o); } s.onchange = () => { on(s.value); redraw(); }; return s; };
+
+    // textos
+    const g1 = grp('Textos');
+    const two = document.createElement('div'); two.className = 'ab-two';
+    two.append(mkLabel('Texto do botão', 'O que aparece ao lado de “Clientes e projetos”.', txt(d.label, 30, v => { d.label = v; })), mkLabel('Título dentro do card', 'Pode deixar vazio.', txt(d.title, 120, v => { d.title = v; redraw(); })));
+    g1.append(two);
+    const blist = document.createElement('div'); g1.append(blist);
+    const drawBlocks = () => {
+      blist.innerHTML = '';
+      d.blocks.forEach((b, i) => {
+        const r = document.createElement('div'); r.className = 'ab-blk';
+        const t = txt(b.title, 120, v => { b.title = v; redraw(); }); t.placeholder = 'Subtítulo (opcional)';
+        const x = document.createElement('textarea'); x.maxLength = 4000; x.rows = 4; x.placeholder = 'Texto (pode ter vários parágrafos)'; x.value = b.text || ''; x.oninput = () => { b.text = x.value; redraw(); };
+        const bt = document.createElement('div'); bt.className = 'bt';
+        const up = mkBtn('↑', '', () => { if (i) { [d.blocks[i - 1], d.blocks[i]] = [d.blocks[i], d.blocks[i - 1]]; drawBlocks(); redraw(); } }), dn = mkBtn('↓', '', () => { if (i < d.blocks.length - 1) { [d.blocks[i + 1], d.blocks[i]] = [d.blocks[i], d.blocks[i + 1]]; drawBlocks(); redraw(); } }), rm = mkBtn('✕ Remover bloco', 'danger', () => { d.blocks.splice(i, 1); drawBlocks(); redraw(); });
+        up.disabled = i === 0; dn.disabled = i === d.blocks.length - 1; bt.append(up, dn, rm); r.append(t, x, bt); blist.append(r);
+      });
+    };
+    g1.append(mkBtn('+ Adicionar bloco de texto', '', () => { if (d.blocks.length >= 12) return; d.blocks.push({ title: '', text: '' }); drawBlocks(); redraw(); }));
+    g1.lastChild.style.marginTop = '12px';
+
+    // foto
+    const g2 = grp('Foto');
+    const ph = document.createElement('div'); ph.className = 'ab-photo';
+    const pimg = document.createElement('img'); const pick = mkBtn('Escolher foto'), adj = mkBtn('✂ Ajustar recorte'), rmv = mkBtn('Remover foto', 'danger');
+    const syncPhoto = () => { const has = !!d.photo; pimg.hidden = !has; adj.hidden = !has; rmv.hidden = !has; pick.textContent = has ? 'Trocar foto' : 'Escolher foto'; if (has) pimg.src = d.photo; };
+    const cropOpts = () => d.shape === 'round' ? { ratio: '1/1', fixed: true } : { ratio: d.ratio, ratios: RATIOS };
+    const setPhoto = r => { file = new File([r.blob], 'sobre-mim.jpg', { type: r.type }); d.photo = URL.createObjectURL(r.blob); if (d.shape !== 'round' && r.ratio) { d.ratio = r.ratio; ratioSel.value = r.ratio; } syncPhoto(); redraw(); };
+    pick.onclick = async () => { const [f] = await pickFiles('image/*', false); if (!f) return; try { const r = await cropFile(f, { ...cropOpts(), kind: 'tile', title: 'Recortar a foto do Sobre mim' }); if (r) setPhoto(r); } catch (e) { toast(e.message, 'bad'); } };
+    adj.onclick = async () => { const r = await cropDialog({ source: d.photo, ...cropOpts(), kind: 'tile', title: 'Ajustar o recorte' }); if (r) setPhoto(r); };
+    rmv.onclick = () => { d.photo = ''; file = null; syncPhoto(); redraw(); };
+    ph.append(pimg, pick, adj, rmv); g2.append(ph);
+    const two2 = document.createElement('div'); two2.className = 'ab-two';
+    const shapeSel = sel(SHAPES, d.shape, v => { d.shape = v; ratioSel.disabled = v === 'round'; });
+    const ratioSel = sel(RATIOS, d.ratio, v => { d.ratio = v; });
+    if (![...ratioSel.options].some(o => o.value === d.ratio)) { const o = document.createElement('option'); o.value = d.ratio; o.textContent = d.ratio.replace('/', ':'); ratioSel.prepend(o); ratioSel.value = d.ratio; }
+    ratioSel.disabled = d.shape === 'round';
+    two2.append(mkLabel('Formato da foto', 'Cantos arredondados, círculo ou reto.', shapeSel), mkLabel('Proporção', 'Círculo sempre usa quadrado. Depois de trocar, use ✂ Ajustar recorte.', ratioSel));
+    g2.append(two2);
+    g2.append(mkLabel('Tamanho da foto', 'Quanto da largura do card a foto ocupa.', range(15, 60, d.size, v => { d.size = v; })));
+
+    // posição
+    const g3 = grp('Posição da foto no card');
+    const hint = document.createElement('p'); hint.className = 'ab-hint'; hint.textContent = 'Arraste o quadrinho da foto para o lugar do card onde ela deve ficar (ou clique no lugar). No celular a foto sempre vem primeiro.'; g3.append(hint);
+    const board = document.createElement('div'); board.className = 'ab-board';
+    const cells = [];
+    for (const v of ZONES_V) for (const hh of ZONES_H) { const c = document.createElement('button'); c.type = 'button'; c.className = 'ab-cell'; c.setAttribute('aria-label', `Foto ${hh === 'left' ? 'à esquerda' : hh === 'right' ? 'à direita' : 'no centro'}, ${v === 'top' ? 'em cima' : v === 'bottom' ? 'embaixo' : 'no meio'}`); c.onclick = () => setZone(hh, v); board.append(c); cells.push([c, hh, v]); }
+    const thumb = document.createElement('div'); thumb.className = 'ab-thumb'; thumb.textContent = '🖼'; board.append(thumb);
+    const place = () => { thumb.style.left = (ZONES_H.indexOf(d.h) * 33.333 + (33.333 - 23) / 2) + '%'; thumb.style.top = (ZONES_V.indexOf(d.v) * 33.333 + (33.333 - 26) / 2) + '%'; cells.forEach(([c, hh, v]) => c.classList.toggle('on', hh === d.h && v === d.v)); };
+    const setZone = (hh, v) => { d.h = hh; d.v = v; place(); redraw(); };
+    const zoneAt = e => { const r = board.getBoundingClientRect(); const x = Math.min(.999, Math.max(0, (e.clientX - r.left) / r.width)), y = Math.min(.999, Math.max(0, (e.clientY - r.top) / r.height)); return [ZONES_H[Math.floor(x * 3)], ZONES_V[Math.floor(y * 3)]]; };
+    thumb.onpointerdown = e => { e.preventDefault(); thumb.setPointerCapture(e.pointerId); thumb.classList.add('drag'); };
+    thumb.onpointermove = e => { if (!thumb.hasPointerCapture(e.pointerId)) return; const r = board.getBoundingClientRect(); thumb.style.left = Math.min(77, Math.max(0, (e.clientX - r.left) / r.width * 100 - 11.5)) + '%'; thumb.style.top = Math.min(74, Math.max(0, (e.clientY - r.top) / r.height * 100 - 13)) + '%'; const [hh, v] = zoneAt(e); cells.forEach(([c, a, b]) => c.classList.toggle('on', a === hh && b === v)); };
+    thumb.onpointerup = e => { thumb.classList.remove('drag'); const [hh, v] = zoneAt(e); setZone(hh, v); };
+    thumb.onpointercancel = () => { thumb.classList.remove('drag'); place(); };
+    g3.append(board);
+
+    // card
+    const g4 = grp('Card');
+    const two3 = document.createElement('div'); two3.className = 'ab-two';
+    two3.append(mkLabel('Largura do card', 'Em porcentagem da largura da página.', range(40, 100, d.width, v => { d.width = v; })), mkLabel('Alinhamento do card', 'Vale quando a largura é menor que 100%.', sel([['left', 'Esquerda'], ['center', 'Centro'], ['right', 'Direita']], d.align, v => { d.align = v; })));
+    g4.append(two3);
+    const two4 = document.createElement('div'); two4.className = 'ab-two';
+    const col = document.createElement('input'); col.type = 'color'; col.value = d.bg.toLowerCase(); col.style.cssText = 'width:64px;height:38px;margin-top:6px;padding:2px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.35)'; col.oninput = () => { d.bg = col.value.toUpperCase(); redraw(); };
+    two4.append(mkLabel('Cor do fundo do card', '', col), mkLabel('Transparência do fundo', 'Mais baixo = mais transparente.', range(15, 95, d.alpha, v => { d.alpha = v; })));
+    g4.append(two4);
+
+    const err = document.createElement('div'); err.className = 'err'; box.append(err);
+    const done = v => { sh.close(); resolve(v); };
+    sh.ent.cancel = () => done(null);
+    const reset = mkBtn('Voltar ao padrão', 'danger', async () => { if (!await confirmBox('Voltar o Sobre mim ao padrão?', 'Largura, formato, posição e cores do card voltam ao padrão. Os textos e a foto não são apagados.', 'Voltar ao padrão')) return; Object.assign(d, { shape: 'soft', ratio: '4/5', size: 34, h: 'left', v: 'top', width: 100, align: 'center', bg: '#6F0085', alpha: 55 }); sh.close(); resolve({ again: d, file, orig }); });
+    const ok = mkBtn('Salvar', 'primary', null, 'submit');
+    const rw = row(reset, mkBtn('Cancelar', '', () => done(null)), ok); rw.style.justifyContent = 'space-between'; box.append(rw);
+    box.onsubmit = e => { e.preventDefault(); done({ about: d, file, orig }); };
+    drawBlocks(); syncPhoto(); place(); redraw();
   });
 }
 
@@ -931,7 +1053,7 @@ const actions = {
       { key: 'heroC', label: 'Pontuação no fim do título', hint: 'Ex.: um ponto final. Pode deixar vazio.', value: st.heroC, max: 10 },
       { key: 'tabTitle', label: 'Título da aba do navegador', hint: 'É o nome que aparece na abinha e no Google.', value: st.tabTitle, max: 80 },
       { key: 'bg', label: 'Imagem de fundo do site', hint: 'Sem escolher nada, usa a foto padrão.', type: 'image', value: st.bg || '', crop: { ratio: '16/9', ratios: [['16/9', 'Computador (16:9)'], ['9/16', 'Celular (9:16)'], ['4/3', '4:3'], ['1/1', 'Quadrado']], kind: 'bg', title: 'Recortar imagem de fundo' } }] }); if (!v) return;
-    const next = { bg: st.bg || '', heroA: v.heroA, heroB: v.heroB, heroC: v.heroC, tabTitle: v.tabTitle, theme: st.theme || {} };
+    const next = { bg: st.bg || '', heroA: v.heroA, heroB: v.heroB, heroC: v.heroC, tabTitle: v.tabTitle, theme: st.theme || {}, about: st.about };
     const old = [];
     try {
       if (v.bg.remove) { old.push(...mediaOf(st.bg)); next.bg = ''; }
@@ -943,6 +1065,23 @@ const actions = {
     const r = await themeEditor(PF.settings.theme); if (!r) return;
     const next = { ...PF.settings, theme: r };
     try { const d = await api('PUT', '/api/settings', { settings: next }); PF.settings = d.settings; PF.refresh(); toast('Aparência salva ✓', 'ok', 1800); } catch (e) { toast(e.message, 'bad', 6000); PF.refresh(); }
+  },
+  async 'edit-about'() {
+    let cur = { ...PF.about, blocks: (PF.about.blocks || []).map(b => ({ ...b })) };
+    for (let n = 0; n < 5; n++) {
+      const r = await aboutEditor(cur); if (!r) return;
+      if (r.again) { cur = { ...r.again }; continue; }
+      let about = { ...r.about };
+      try {
+        const old = mediaOf(r.orig);
+        if (r.file) { const up = await upload(r.file, { blob: r.file, type: r.file.type, ratio: about.ratio }); about.photo = up.src; }
+        else if (about.photo.startsWith('blob:')) about.photo = r.orig;
+        about.blocks = about.blocks.filter(b => (b.title || '').trim() || (b.text || '').trim());
+        const d = await api('PUT', '/api/settings', { settings: { ...PF.settings, about } });
+        PF.settings = d.settings; PF.refresh(); toast('Sobre mim salvo ✓', 'ok', 1800); dropMedia(old);
+      } catch (e) { if (!e.shown) toast(e.message, 'bad', 6000); }
+      return;
+    }
   },
   async 'edit-footer'() {
     const r = await footerEditor(PF.footer); if (!r) return;
@@ -1036,7 +1175,8 @@ window.PF_ADMIN = {
     ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`;
   },
   sub: k => `<div class="pf-a pf-sub-tools"><span class="pf-btn pf-grabs" draggable="true" data-sid="${k.id}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-sub', '‹', k.id, 'data-d="-1" title="Mover para antes"')}${btn('move-sub', '›', k.id, 'data-d="1" title="Mover para depois"')}</div>`,
-  footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`
+  footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`,
+  about: () => `<button type="button" class="pf-a pf-btn" data-act="edit-about">✎ Editar</button>`
 };
 
 /* arrastar e soltar os cards da página inicial */

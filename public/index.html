@@ -26,6 +26,8 @@
   /* aparência por elemento (padrão = visual original; o painel Aparência troca estes valores) */
   --ink-live:var(--ink);--muted-live:var(--muted);--accent-live:var(--accent);
   --g1:#A524BF;--g2:#4A0058;--f1:#A524BF;--f2:#4A0058;
+  --t-abbtn:var(--ink);--t-abt:var(--ink);--t-abs:var(--ink);--t-abx:var(--muted);
+  --ff-abbtn:var(--f-display);--ff-abt:var(--f-display);--ff-abs:var(--f-display);--ff-abx:var(--f-body);
   --t-hero:var(--ink);--t-mov:#A524BF;--t-dot:#FFFFFF;--t-sec:var(--ink);--t-card:var(--ink);--t-kind:var(--muted);--t-lead:var(--muted);--t-ig:var(--accent);--t-chip:var(--ink);--t-sub:var(--ink);--t-blk:var(--ink);--t-cap:var(--ink);--t-nav:var(--muted);--t-foot:var(--ink);
   --ff-hero:var(--f-display);--ff-sec:var(--f-display);--ff-card:var(--f-display);--ff-kind:var(--f-body);--ff-lead:var(--f-body);--ff-ig:var(--f-display);--ff-chip:var(--f-body);--ff-sub:var(--f-display);--ff-blk:var(--f-display);--ff-cap:var(--f-body);--ff-nav:var(--f-body);--ff-foot:var(--f-body);
   --gutter:clamp(16px,4vw,48px);
@@ -71,6 +73,31 @@ main.wrap{width:100%;flex:1 0 auto}
 .playhead{position:absolute;top:-6px;bottom:-6px;left:0;width:2px;background:var(--ink);pointer-events:none}
 .playhead::before{content:"";position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--ink);border-bottom:0;width:0;height:0;border-left-width:6px;border-right-width:6px}
 .lbl-v{grid-column:1;grid-row:1}.lbl-d{grid-column:1;grid-row:2}
+
+/* sobre mim */
+.sec-head .about-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.about-btn{font-family:var(--ff-abbtn);color:var(--t-abbtn);border:1px solid var(--line);background:rgba(255,243,252,.08);border-radius:99px;padding:8px 18px;font-weight:600;font-size:.95rem;display:inline-flex;align-items:center;gap:8px;transition:background .2s,color .2s,border-color .2s}
+.about-btn::after{content:"▾";font-size:.8em;transition:transform .35s}
+.about-btn[aria-expanded="true"]::after{transform:rotate(180deg)}
+.about-btn:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.about-btn small{font-weight:400;font-style:italic;opacity:.75;font-size:.72rem}
+.about-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1)}
+.about-wrap.open{grid-template-rows:1fr}
+.about-in{min-height:0;overflow:hidden}
+.about-wrap.open .about-in{padding-bottom:22px}
+.about-card{width:var(--about-w,100%);display:grid;gap:14px 28px;grid-template-columns:var(--cols-d,minmax(0,1fr));grid-template-areas:var(--areas-d,'title' 'text');align-items:start;background:rgba(var(--about-rgb,111,0,133),var(--about-a,.55));border:1px solid var(--line);border-radius:22px;padding:clamp(18px,3vw,32px);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.about-card.al-left{margin-right:auto}.about-card.al-center{margin-inline:auto}.about-card.al-right{margin-left:auto}
+.about-photo{grid-area:photo;margin:0;width:100%;aspect-ratio:var(--ph-r,4/5);overflow:hidden;background:rgba(0,0,0,.25)}
+.about-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.s-soft .about-photo{border-radius:16px}.s-round .about-photo{border-radius:50%}.s-square .about-photo{border-radius:0}
+.v-top .about-photo{align-self:start}.v-middle .about-photo{align-self:center}.v-bottom .about-photo{align-self:end}
+.h-center .about-photo{width:var(--ph-w,34%);min-width:min(100%,160px);justify-self:center}
+.about-title{grid-area:title;font-family:var(--ff-abt);color:var(--t-abt);font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;line-height:1.05}
+.about-text{grid-area:text;min-width:0}
+.about-blk h4{margin:0 0 4px;font-family:var(--ff-abs);color:var(--t-abs);font-size:1.15rem;font-weight:700;line-height:1.2}
+.about-blk p{margin:0;font-family:var(--ff-abx);color:var(--t-abx);white-space:pre-line;overflow-wrap:anywhere;line-height:1.65;font-size:clamp(1rem,1.8vw,1.1rem)}
+.about-blk+.about-blk{margin-top:18px}
+@media (max-width:720px){.about-card{width:100%;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;grid-template-areas:var(--areas-m,'title' 'text')!important}.about-photo{width:min(100%,360px);justify-self:center;align-self:start!important}.h-center .about-photo{width:max(var(--ph-w,34%),min(100%,200px))}}
 
 /* grade */
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:20px;border-top:1px solid var(--line);padding-top:20px}
@@ -192,7 +219,8 @@ body.pf-preview .tile.empty{display:none}
   </section>
 
   <section aria-labelledby="clientes-t">
-    <div class="sec-head"><h2 id="clientes-t">Clientes e projetos</h2></div>
+    <div class="sec-head"><h2 id="clientes-t">Clientes e projetos</h2><div class="about-tools" id="about-tools"></div></div>
+    <div class="about-wrap" id="about-wrap" role="region" aria-label="Sobre mim" inert><div class="about-in" id="about-in"></div></div>
     <ul class="grid" id="grid"></ul>
   </section>
 </main>
@@ -224,6 +252,7 @@ body.pf-preview .tile.empty{display:none}
 /* ===== CONTEÚDO =====
    Vem do servidor (/api/content). Se o servidor estiver fora do ar, usa seed.json. */
 let CLIENTS = [], REV = 0, ORDER = [], SETTINGS = { bg:'', heroA:'Ideias em', heroB:'movimento', heroC:'.', tabTitle:'Portfólio de Design e Vídeo' };
+const DEFAULT_ABOUT = { label:'Sobre mim', title:'Sobre mim', blocks:[], photo:'', ratio:'4/5', shape:'soft', size:34, h:'left', v:'top', width:100, align:'center', bg:'#6F0085', alpha:55 };
 
 /* ===== AUXILIARES ===== */
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -263,10 +292,53 @@ function applySettings(){
   const img = st.bg || 'fundo.jpg';
   document.documentElement.style.setProperty('--foto', `linear-gradient(rgba(var(--veil),.80),rgba(var(--veil),.80)),url(${img}) center 25%/cover no-repeat`);
   applyTheme(st.theme || {});
+  renderAbout();
 }
+/* ===== SOBRE MIM ===== */
+let aboutOpen = false;
+const getAbout = () => ({ ...DEFAULT_ABOUT, ...(SETTINGS.about || {}) });
+const aboutHas = a => !!(a.photo || (a.blocks||[]).some(b => b.title || b.text));
+function aboutAreas(a){
+  const hasP = !!a.photo, hasT = !!a.title, q = x => "'" + x + "'";
+  const stack = o => o.filter(Boolean).map(q).join(' ');
+  let order;
+  if(!hasP) order = [hasT && 'title', 'text'];
+  else if(a.h === 'center') order = a.v === 'top' ? ['photo', hasT && 'title', 'text'] : a.v === 'middle' ? [hasT && 'title', 'photo', 'text'] : [hasT && 'title', 'text', 'photo'];
+  else order = ['photo', hasT && 'title', 'text'];
+  const mobile = stack(order); let desk = mobile, cols = 'minmax(0,1fr)';
+  if(hasP && a.h !== 'center'){
+    const tx = hasT ? ['title','text'] : ['text'];
+    if(a.h === 'left'){ cols = 'minmax(140px,var(--ph-w)) minmax(0,1fr)'; desk = tx.map(t => q('photo ' + t)).join(' '); }
+    else { cols = 'minmax(0,1fr) minmax(140px,var(--ph-w))'; desk = tx.map(t => q(t + ' photo')).join(' '); }
+  }
+  return { desk, cols, mobile };
+}
+function aboutCardHTML(a){
+  a = { ...DEFAULT_ABOUT, ...(a || {}) };
+  const ar = aboutAreas(a);
+  const style = `--about-w:${a.width}%;--about-rgb:${hexRgb(a.bg)};--about-a:${a.alpha/100};--ph-w:${a.size}%;--ph-r:${a.shape==='round'?'1/1':esc(a.ratio)};--cols-d:${ar.cols};--areas-d:${ar.desk};--areas-m:${ar.mobile}`;
+  const photo = a.photo ? `<figure class="about-photo"><img src="${esc(a.photo)}" alt="${esc(a.title||'Foto')}"></figure>` : '';
+  const title = a.title ? `<h3 class="about-title">${esc(a.title)}</h3>` : '';
+  const blocks = (a.blocks||[]).map(b => `<div class="about-blk">${b.title?`<h4>${esc(b.title)}</h4>`:''}${b.text?`<p>${esc(b.text)}</p>`:''}</div>`).join('');
+  return `<article class="about-card h-${a.h} v-${a.v} s-${a.shape} al-${a.align}" style="${style}">${photo}${title}<div class="about-text">${blocks}</div></article>`;
+}
+function renderAbout(){
+  const a = getAbout(), has = aboutHas(a), adm = !!AD();
+  const tools = $('#about-tools'), wrap = $('#about-wrap'), inner = $('#about-in');
+  if(!tools) return;
+  if(!has && !adm){ tools.innerHTML = ''; inner.innerHTML = ''; wrap.classList.remove('open'); wrap.inert = true; aboutOpen = false; return; }
+  tools.innerHTML = `<button type="button" class="about-btn" id="about-btn" aria-expanded="${aboutOpen}" aria-controls="about-wrap">${esc(a.label || 'Sobre mim')}${has?'':'<small>vazio · só você vê</small>'}</button>${AD()?AD().about():''}`;
+  inner.innerHTML = aboutCardHTML(a);
+  wrap.classList.toggle('open', aboutOpen); wrap.inert = !aboutOpen;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#about-btn'); if(!b) return;
+  aboutOpen = !aboutOpen; b.setAttribute('aria-expanded', aboutOpen);
+  const w = $('#about-wrap'); w.classList.toggle('open', aboutOpen); w.inert = !aboutOpen;
+});
 /* ===== APARÊNCIA ===== */
-const T_COLOR = { c_veil:['--veil',1], c_cardbg:['--card-rgb',1], c_line:['--line-rgb',1], c_ink:['--ink'], c_muted:['--muted'], c_accent:['--accent'], c_detail:['--detail'], c_hero:['--t-hero'], c_mov:['--t-mov'], c_dot:['--t-dot'], c_sec:['--t-sec'], c_card:['--t-card'], c_kind:['--t-kind'], c_lead:['--t-lead'], c_ig:['--t-ig'], c_chip:['--t-chip'], c_sub:['--t-sub'], c_blk:['--t-blk'], c_cap:['--t-cap'], c_nav:['--t-nav'], c_foot:['--t-foot'], c_f1:['--f1'], c_f2:['--f2'], c_g1:['--g1'], c_g2:['--g2'] };
-const T_FONT = { f_body:'--f-body', f_display:'--f-display', f_hero:'--ff-hero', f_sec:'--ff-sec', f_card:'--ff-card', f_kind:'--ff-kind', f_lead:'--ff-lead', f_ig:'--ff-ig', f_chip:'--ff-chip', f_sub:'--ff-sub', f_blk:'--ff-blk', f_cap:'--ff-cap', f_nav:'--ff-nav', f_foot:'--ff-foot' };
+const T_COLOR = { c_veil:['--veil',1], c_cardbg:['--card-rgb',1], c_line:['--line-rgb',1], c_ink:['--ink'], c_muted:['--muted'], c_accent:['--accent'], c_detail:['--detail'], c_hero:['--t-hero'], c_mov:['--t-mov'], c_dot:['--t-dot'], c_sec:['--t-sec'], c_card:['--t-card'], c_kind:['--t-kind'], c_lead:['--t-lead'], c_ig:['--t-ig'], c_chip:['--t-chip'], c_sub:['--t-sub'], c_blk:['--t-blk'], c_cap:['--t-cap'], c_nav:['--t-nav'], c_foot:['--t-foot'], c_f1:['--f1'], c_f2:['--f2'], c_g1:['--g1'], c_g2:['--g2'], c_abbtn:['--t-abbtn'], c_abt:['--t-abt'], c_abs:['--t-abs'], c_abx:['--t-abx'] };
+const T_FONT = { f_body:'--f-body', f_display:'--f-display', f_hero:'--ff-hero', f_sec:'--ff-sec', f_card:'--ff-card', f_kind:'--ff-kind', f_lead:'--ff-lead', f_ig:'--ff-ig', f_chip:'--ff-chip', f_sub:'--ff-sub', f_blk:'--ff-blk', f_cap:'--ff-cap', f_nav:'--ff-nav', f_foot:'--ff-foot', f_abbtn:'--ff-abbtn', f_abt:'--ff-abt', f_abs:'--ff-abs', f_abx:'--ff-abx' };
 const SYS_FONTS = { 'Arial':'Arial,Helvetica,sans-serif', 'Verdana':'Verdana,Geneva,sans-serif', 'Tahoma':'Tahoma,Geneva,sans-serif', 'Trebuchet MS':'"Trebuchet MS",Helvetica,sans-serif', 'Georgia':'Georgia,serif', 'Times New Roman':'"Times New Roman",Times,serif', 'Courier New':'"Courier New",Courier,monospace', 'Impact':'Impact,Haettenschweiler,sans-serif' };
 const BUILTIN_FONTS = ['Bricolage Grotesque','Figtree'];
 const hexRgb = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16)).join(',');
@@ -514,7 +586,7 @@ pbody.addEventListener('click', e => {
 
 /* API para o painel de administração (só é carregado para quem está logada) */
 window.PF = {
-  openCarousel, applyTheme,
+  openCarousel, applyTheme, aboutCardHTML, renderAbout, get about(){ return getAbout(); },
   get clients(){ return CLIENTS; }, get rev(){ return REV; }, set rev(v){ REV = v; },
   setClients(list, rev, footer, settings){ CLIENTS = list; if(rev!=null) REV = rev; if(footer) FOOTER = footer; if(settings) SETTINGS = settings; this.refresh(); },
   get settings(){ return SETTINGS; }, set settings(v){ SETTINGS = v; },
