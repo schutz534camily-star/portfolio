@@ -158,6 +158,8 @@ main.wrap{width:100%;flex:1 0 auto}
 .tile:hover .art{transform:scale(1.02);border-color:var(--detail)}
 .art img.zoomable{cursor:zoom-in}
 .art video,.art img{width:100%;height:100%;object-fit:cover;display:block}
+.art video{object-fit:contain;background:#000}
+.art video:fullscreen,.art video:-webkit-full-screen{object-fit:contain;width:100%;height:100%}
 .art .ph{display:grid;justify-items:center;gap:10px;text-align:center;padding:12px;color:var(--muted);font-size:.8rem}
 .art a.open{position:absolute;inset:0;align-content:center;color:var(--ink);text-decoration:none;font-weight:600}
 .art a.open:hover .play{transform:scale(1.08)}
@@ -604,6 +606,11 @@ addEventListener('pointerup', e => {
 /* vídeo com capa escolhida: a capa é o frame #t; ao dar play sem ter mexido na barra, começa do início */
 pbody.addEventListener('seeked', e => { const v = e.target; if(v.dataset && v.dataset.pt && Math.abs(v.currentTime - Number(v.dataset.ptt)) > 0.6) delete v.dataset.pt; }, true);
 pbody.addEventListener('play', e => { const v = e.target; if(v.dataset && v.dataset.pt){ delete v.dataset.pt; try{ v.currentTime = 0; }catch(_){} } }, true);
+/* o quadro do vídeo acompanha a proporção real do arquivo (nada cortado) */
+pbody.addEventListener('loadedmetadata', e => {
+  const v = e.target; if(!v.videoWidth || !v.videoHeight || !v.closest) return;
+  const a = v.closest('.art'); if(a) a.style.setProperty('--r', Math.min(3, Math.max(.4, v.videoWidth / v.videoHeight)).toFixed(4));
+}, true);
 function zoomImg(img){
   const f = img.closest('[data-wi]'); if(!f || !curItem) return;
   const w = curItem.works[Number(f.dataset.wi)]; if(!w || !w.src) return;
