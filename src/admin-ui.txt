@@ -52,7 +52,7 @@ body.pf-on .rodape{padding-bottom:96px}
 .pf-chk{display:none;position:absolute;top:10px;left:10px;z-index:6;width:30px;height:30px;border-radius:8px;background:rgba(20,0,26,.85);border:1px solid var(--line);align-items:center;justify-content:center;cursor:pointer}
 body.pf-sel .pf-chk{display:flex}
 .pf-chk input{width:20px;height:20px;accent-color:#FFC94A;cursor:pointer;margin:0}
-body.pf-sel .pf-card-tools,body.pf-sel .pf-tile-tools,body.pf-sel .pf-sub-tools{display:none!important}
+body.pf-sel .expand,body.pf-sel .pf-card-tools,body.pf-sel .pf-tile-tools,body.pf-sel .pf-sub-tools{display:none!important}
 body.pf-sel li[data-cid]:has(.pf-chk input:checked) .card,body.pf-sel .subw:has(.pf-chk input:checked) .sub,body.pf-sel .tile:has(.pf-chk input:checked) .art{outline:3px solid #FFC94A;outline-offset:2px}
 body.pf-sel .tile .art,body.pf-sel .card,body.pf-sel .sub{cursor:pointer}
 body.pf-sel .tile video{pointer-events:none}

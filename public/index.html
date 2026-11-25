@@ -194,20 +194,27 @@ body.pf-preview .tile.empty{display:none}
 .carbadge{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;background:rgba(20,0,26,.78);color:var(--ink);border-radius:99px;padding:4px 10px;font-size:.75rem;font-weight:600}
 .lb{position:fixed;inset:0;z-index:70;background:rgba(8,0,12,.92);display:grid;place-items:center;touch-action:pan-y}
 .lb[hidden]{display:none}
-.lb-stage{position:relative;width:min(92vw,calc((100dvh - 150px) * var(--lr,1)));max-width:960px;aspect-ratio:var(--lr,1);border-radius:14px;overflow:hidden;background:#000;user-select:none}
+.lb-wrap{display:grid;grid-template-columns:44px auto 44px;grid-template-areas:"prev stage next" ". bar .";gap:12px 14px;align-items:center;justify-items:center;max-width:100vw;padding:0 12px}
+.lb-stage{grid-area:stage;position:relative;width:min(calc(100vw - 44px*2 - 14px*2 - 24px),calc((100dvh - 170px) * var(--lr,1)),1100px);aspect-ratio:var(--lr,1);border-radius:14px;overflow:hidden;background:#000;user-select:none}
 .lb-track{display:flex;height:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1);will-change:transform}
-.lb-track img{flex:none;width:100%;height:100%;object-fit:contain;display:block;-webkit-user-drag:none}
-.lb-btn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,243,252,.9);color:#2b0034;font-size:1.6rem;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:2;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.lb-track>*{flex:none;width:100%;height:100%;object-fit:contain;display:block;-webkit-user-drag:none;background:#000}
+.lb-btn{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,243,252,.9);color:#2b0034;font-size:1.6rem;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .lb-btn:hover{background:var(--accent)}
-.lb-btn[hidden]{display:none}
-.lb-prev{left:10px}.lb-next{right:10px}
+.lb-btn[hidden]{display:grid;visibility:hidden;pointer-events:none}
+.lb-prev{grid-area:prev}.lb-next{grid-area:next}
+.lb-bar{grid-area:bar;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:20px}
+@media (max-width:640px){
+  .lb-wrap{grid-template-columns:44px minmax(0,1fr) 44px;grid-template-areas:"stage stage stage" "prev bar next";gap:12px 8px;width:100%}
+  .lb-stage{grid-column:1/-1;width:min(calc(100vw - 24px),calc((100dvh - 190px) * var(--lr,1)))}
+}
+.expand{position:absolute;top:8px;left:8px;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:rgba(20,0,26,.72);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+.expand:hover{background:var(--accent);color:var(--accent-ink)}
 .lb-close{position:absolute;top:14px;right:14px;z-index:3;border:1px solid var(--line);background:rgba(255,243,252,.1);border-radius:99px;padding:8px 16px;font-weight:600;color:var(--ink);cursor:pointer}
 .lb-close:hover{background:var(--accent);color:var(--accent-ink)}
-.lb-count{position:absolute;top:12px;left:12px;background:rgba(20,0,26,.7);color:var(--ink);font-size:.78rem;font-weight:600;padding:4px 10px;border-radius:99px;z-index:2}
-.lb-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:6px;z-index:2}
+.lb-count{color:var(--ink);font-size:.82rem;font-weight:600;letter-spacing:.04em}
+.lb-dots{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;max-width:100%}
 .lb-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,243,252,.4)}
 .lb-dots i.on{background:#fff;transform:scale(1.2)}
-.lb-title{position:absolute;bottom:22px;left:0;right:0;text-align:center;color:var(--muted);font-size:.9rem;padding-inline:16px}
 
 /* rodapé */
 .rodape{background:radial-gradient(120% 90% at 20% 0%,rgba(43,0,52,.45),transparent 60%),linear-gradient(135deg,var(--f1),var(--f2));border-top:1px solid var(--line);padding:28px var(--gutter);flex:none}
@@ -253,14 +260,13 @@ body.pf-preview .tile.empty{display:none}
   </div>
 </div>
 
-<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Carrossel de imagens">
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Galeria de imagens e vídeos">
   <button class="lb-close" id="lb-close" type="button">Fechar ✕</button>
-  <div class="lb-stage" id="lb-stage">
-    <span class="lb-count" id="lb-count"></span>
-    <div class="lb-track" id="lb-track"></div>
+  <div class="lb-wrap">
     <button class="lb-btn lb-prev" id="lb-prev" type="button" aria-label="Anterior">‹</button>
+    <div class="lb-stage" id="lb-stage"><div class="lb-track" id="lb-track"></div></div>
     <button class="lb-btn lb-next" id="lb-next" type="button" aria-label="Próxima">›</button>
-    <div class="lb-dots" id="lb-dots"></div>
+    <div class="lb-bar"><span class="lb-count" id="lb-count"></span><div class="lb-dots" id="lb-dots"></div></div>
   </div>
 </div>
 
@@ -445,7 +451,7 @@ function tileHTML(w, i, tag = true){
   } else if(w.canva){
     art = `<a class="ph open" href="${esc(w.canva)}" target="_blank" rel="noopener noreferrer"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Abrir apresentação no Canva ↗</span></a>`;
   } else if(w.src){
-    art = video ? (w.poster ? `<video src="${esc(w.src)}${w.posterT?'#t='+w.posterT:''}" poster="${esc(w.poster)}"${w.posterT?` data-pt="1" data-ptt="${w.posterT}"`:''} controls playsinline preload="metadata"></video>` : `<video src="${esc(w.src)}#t=0.1" controls playsinline preload="metadata"></video>`)
+    art = video ? (w.poster ? `<video src="${esc(w.src)}${w.posterT?'#t='+w.posterT:''}" poster="${esc(w.poster)}"${w.posterT?` data-pt="1" data-ptt="${w.posterT}"`:''} controls controlslist="nofullscreen" playsinline preload="metadata"></video>` : `<video src="${esc(w.src)}#t=0.1" controls controlslist="nofullscreen" playsinline preload="metadata"></video>`)
                 : `<img class="zoomable" data-zoom src="${esc(w.src)}" alt="${esc(w.title)}" loading="lazy" tabindex="0" role="button" aria-label="Ampliar imagem">`;
   } else if(video){
     art = `<div class="ph"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Seu vídeo aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
@@ -453,7 +459,7 @@ function tileHTML(w, i, tag = true){
     art = `<div class="ph"><span class="frame"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8C3F2" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="M3 17l5-5 4 4 3-3 4 4"/></svg></span><span>Seu trabalho aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
   }
   return `<figure class="tile${wide}${real(w)?'':' empty'}" data-wi="${curItem.works.indexOf(w)}" style="--i:${i};--r:${w.r||'16/9'}">
-    <div class="art">${art}${AD()?AD().tile(curItem, curItem.works.indexOf(w)):''}</div>
+    <div class="art">${art}${(video&&w.src&&!w.canva)?`<button type="button" class="expand" data-expand aria-label="Ampliar vídeo" title="Ampliar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>`:''}${AD()?AD().tile(curItem, curItem.works.indexOf(w)):''}</div>
     ${w.title?`<figcaption class="cap">${(video||!tag)?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>`:''}
   </figure>`;
 }
@@ -592,29 +598,68 @@ addEventListener('hashchange', route);
 
 /* ===== CARROSSEL (janela com setinhas, estilo Instagram) ===== */
 const lb = $('#lb'), lbTrack = $('#lb-track'), lbStage = $('#lb-stage');
-let lbImgs = [], lbI = 0, lbOpener = null;
+let lbS = [], lbI = 0, lbOpener = null;
+function parseR(v){ if(typeof v==='number') return v||1; v = String(v||''); if(v.includes('/')){ const [a,b] = v.split('/').map(Number); return (a/b)||1; } return Number(v)||1; }
+function lbRatio(){ const s = lbS[lbI]; lbStage.style.setProperty('--lr', Math.min(3, Math.max(.4, s ? s.lr : 1)).toFixed(4)); }
 function lbShow(i){
-  lbI = Math.max(0, Math.min(lbImgs.length-1, i));
+  lbI = Math.max(0, Math.min(lbS.length-1, i));
   lbTrack.style.transform = `translateX(${-100*lbI}%)`;
-  $('#lb-count').textContent = `${lbI+1}/${lbImgs.length}`;
-  $('#lb-prev').hidden = lbI===0; $('#lb-next').hidden = lbI===lbImgs.length-1;
-  $('#lb-dots').innerHTML = lbImgs.length>1 ? lbImgs.map((_,k)=>`<i class="${k===lbI?'on':''}"></i>`).join('') : '';
-  $('#lb-count').hidden = lbImgs.length<2;
+  $('#lb-count').textContent = `${lbI+1} / ${lbS.length}`;
+  $('#lb-prev').hidden = lbI===0; $('#lb-next').hidden = lbI===lbS.length-1;
+  $('#lb-dots').innerHTML = lbS.length>1 && lbS.length<=30 ? lbS.map((_,k)=>`<i class="${k===lbI?'on':''}"></i>`).join('') : '';
+  $('#lb-count').hidden = lbS.length<2;
+  lbRatio();
+  lbTrack.querySelectorAll('video').forEach(v => { const k = Number(v.dataset.k); if(k!==lbI && !v.paused) v.pause(); if(Math.abs(k-lbI)<=1 && v.preload==='none') v.preload = 'metadata'; });
 }
-function openCarousel(w, start){
-  lbImgs = w.images || []; if(!lbImgs.length) return;
-  const [a,b] = (w.r||'1/1').split('/').map(Number);
-  lbStage.style.setProperty('--lr', (a/b) || 1);
-  lbTrack.innerHTML = lbImgs.map((u,k)=>`<img src="${esc(u)}" alt="${esc(w.title||'Imagem')} ${k+1}" ${Math.abs(k-start)<2?'':'loading="lazy"'}>`).join('');
+function lbOpen(slides, start){
+  lbS = slides; if(!lbS.length) return;
+  start = Math.max(0, Math.min(lbS.length-1, start||0));
+  stopVideos();
+  lbTrack.innerHTML = lbS.map((x,k)=>{
+    const near = Math.abs(k-start)<2;
+    return x.video
+      ? `<video data-k="${k}" src="${esc(x.src)}${x.posterT?'#t='+x.posterT:''}"${x.poster?` poster="${esc(x.poster)}"`:''} controls playsinline preload="${near?'metadata':'none'}"></video>`
+      : `<img data-k="${k}" src="${esc(x.src)}" alt="${esc(x.title||'Imagem')} ${k+1}" ${near?'':'loading="lazy"'}>`;
+  }).join('');
   lbOpener = document.activeElement; lb.hidden = false;
   lbTrack.style.transition = 'none'; lbShow(start); void lbTrack.offsetWidth; lbTrack.style.transition = '';
   $('#lb-close').focus({preventScroll:true});
 }
-function closeCarousel(){ lb.hidden = true; lbTrack.innerHTML = ''; if(lbOpener && lbOpener.focus) lbOpener.focus({preventScroll:true}); }
+/* proporção real do arquivo assim que ele carrega */
+function lbRatioFrom(e){
+  const el = e.target; if(!el.dataset || el.dataset.k==null) return;
+  const w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight; if(!w || !h) return;
+  const k = Number(el.dataset.k); if(lbS[k]){ lbS[k].lr = w/h; if(k===lbI) lbRatio(); }
+}
+lbTrack.addEventListener('load', lbRatioFrom, true);
+lbTrack.addEventListener('loadedmetadata', lbRatioFrom, true);
+function openCarousel(w, start){
+  const im = w.images || []; const lr = parseR(w.r||'1/1');
+  lbOpen(im.map(u => ({ src:u, title:w.title, lr })), start);
+}
+/* galeria: todas as fotos, GIFs e vídeos do item aberto, na ordem em que aparecem na página */
+function openGallery(tile){
+  if(!curItem || !tile) return;
+  const list = [], idx = new Map();
+  pbody.querySelectorAll('[data-wi]').forEach(t => {
+    const w = curItem.works[Number(t.dataset.wi)];
+    if(!w || w.t==='carousel' || w.canva || !w.src || idx.has(t)) return;
+    const art = t.querySelector('.art');
+    const r = (art && art.style.getPropertyValue('--r')) || t.style.getPropertyValue('--r') || w.r || '1/1';
+    const v = w.t==='video';
+    idx.set(t, list.length);
+    list.push({ src:w.src, title:w.title, video:v, poster:v?w.poster:'', posterT:v?w.posterT:0, lr:parseR(r) });
+  });
+  lbOpen(list, idx.has(tile) ? idx.get(tile) : 0);
+}
+function closeCarousel(){
+  lb.hidden = true; lbTrack.querySelectorAll('video').forEach(v => v.pause()); lbTrack.innerHTML = '';
+  if(lbOpener && lbOpener.focus) lbOpener.focus({preventScroll:true});
+}
 $('#lb-prev').addEventListener('click', () => lbShow(lbI-1));
 $('#lb-next').addEventListener('click', () => lbShow(lbI+1));
 $('#lb-close').addEventListener('click', closeCarousel);
-lb.addEventListener('click', e => { if(e.target===lb) closeCarousel(); });
+lb.addEventListener('click', e => { if(e.target===lb || e.target.classList.contains('lb-wrap')) closeCarousel(); });
 addEventListener('keydown', e => {
   if(lb.hidden) return;
   if(e.key==='Escape'){ e.stopImmediatePropagation(); closeCarousel(); }
@@ -622,7 +667,7 @@ addEventListener('keydown', e => {
   else if(e.key==='ArrowRight'){ e.stopImmediatePropagation(); lbShow(lbI+1); }
 }, true);
 let swX = null;
-lbStage.addEventListener('pointerdown', e => { if(!e.target.closest('.lb-btn')) swX = e.clientX; });
+lbStage.addEventListener('pointerdown', e => { if(!e.target.closest('.lb-btn,video')) swX = e.clientX; });
 addEventListener('pointerup', e => {
   if(swX===null) return; const dx = e.clientX - swX; swX = null;
   if(Math.abs(dx) > 45) lbShow(lbI + (dx < 0 ? 1 : -1));
@@ -635,14 +680,11 @@ pbody.addEventListener('loadedmetadata', e => {
   const v = e.target; if(!v.videoWidth || !v.videoHeight || !v.closest) return;
   const a = v.closest('.art'); if(a) a.style.setProperty('--r', Math.min(3, Math.max(.4, v.videoWidth / v.videoHeight)).toFixed(4));
 }, true);
-function zoomImg(img){
-  const f = img.closest('[data-wi]'); if(!f || !curItem) return;
-  const w = curItem.works[Number(f.dataset.wi)]; if(!w || !w.src) return;
-  openCarousel({ images:[w.src], title:w.title, r: img.naturalWidth && img.naturalHeight ? img.naturalWidth+'/'+img.naturalHeight : '1/1' }, 0);
-}
+function zoomImg(img){ const f = img.closest('[data-wi]'); if(f) openGallery(f); }
 pbody.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('img[data-zoom]')){ e.preventDefault(); zoomImg(e.target); } });
 pbody.addEventListener('click', e => {
   const z = e.target.closest('img[data-zoom]'); if(z){ zoomImg(z); return; }
+  const x = e.target.closest('[data-expand]'); if(x){ openGallery(x.closest('[data-wi]')); return; }
   const c = e.target.closest('[data-car]'); if(!c || !curItem) return;
   openCarousel(curItem.works[Number(c.dataset.car)], 0);
 });
