@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Área administrativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#6F0085;--ink:#FFF3FC;--muted:#E8C3F2;--accent:#FFC94A;--accent-ink:#2B0034;--line:rgba(255,243,252,.24);
+ --foto:linear-gradient(rgba(43,0,52,.80),rgba(43,0,52,.80)),url(fundo.jpg) center 25%/cover no-repeat;
+ --f-display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif;--f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--foto),var(--bg)}
+.box{width:min(420px,100%);background:rgba(0,0,0,.6);border:1px solid var(--line);border-radius:22px;padding:30px 26px}
+h1{margin:0;font-family:var(--f-display);font-weight:800;font-size:2rem;letter-spacing:-.02em;line-height:1.05}
+p{color:var(--muted);margin:8px 0 0}
+label{display:block;margin-top:16px;font-weight:600;font-size:.9rem}
+input{width:100%;margin-top:6px;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--ink);font:inherit;font-size:1rem}
+input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{margin-top:22px;width:100%;padding:14px;border:0;border-radius:99px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;font-size:1rem;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+.err{color:#ff9bb0;margin-top:14px;min-height:1.2em;font-size:.9rem}
+a{color:var(--accent)}
+.small{font-size:.82rem;margin-top:18px;text-align:center}
+</style>
+</head>
+<body>
+<main class="box">
+  <h1 id="t">Área administrativa</h1>
+  <p id="sub">Carregando…</p>
+  <form id="f" hidden novalidate>
+    <label>Usuário<input id="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>Senha<input id="p" type="password" autocomplete="current-password" required></label>
+    <label id="l2" hidden>Repita a senha<input id="p2" type="password" autocomplete="new-password"></label>
+    <div class="err" id="e" role="alert"></div>
+    <button id="b" type="submit">Entrar</button>
+  </form>
+  <p class="small"><a href="/">← Voltar ao portfólio</a></p>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+let setup = false;
+async function post(path, body){
+  const r = await fetch(path, { method:'POST', credentials:'same-origin', headers:{'content-type':'application/json','x-requested-with':'portfolio'}, body:JSON.stringify(body) });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || 'Erro. Tente de novo.');
+  return d;
+}
+(async () => {
+  try{
+    const me = await (await fetch('/api/me', {credentials:'same-origin'})).json();
+    if(me.admin){ location.replace('/'); return; }
+    setup = me.needsSetup;
+  }catch(e){ $('#sub').textContent = 'Não consegui falar com o servidor. Recarregue a página.'; return; }
+  $('#f').hidden = false;
+  if(setup){
+    $('#t').textContent = 'Criar acesso';
+    $('#sub').textContent = 'Primeiro acesso: escolha o usuário e a senha que vão controlar o site. Guarde-os com cuidado.';
+    $('#l2').hidden = false; $('#p').autocomplete = 'new-password'; $('#b').textContent = 'Criar acesso e entrar';
+  } else {
+    $('#sub').textContent = 'Entre para editar o portfólio.';
+  }
+  $('#u').focus();
+})();
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('#e'); err.textContent = '';
+  const username = $('#u').value.trim(), password = $('#p').value;
+  if(setup && password !== $('#p2').value){ err.textContent = 'As duas senhas não são iguais.'; return; }
+  $('#b').disabled = true;
+  try{ await post(setup ? '/api/setup' : '/api/login', { username, password }); location.replace('/'); }
+  catch(ex){ err.textContent = ex.message; $('#b').disabled = false; }
+});
+</script>
+</body>
+</html>

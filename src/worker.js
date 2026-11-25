@@ -1,0 +1,338 @@
+// Backend do portfólio (Cloudflare Worker): login, conteúdo (D1) e arquivos (KV).
+// Toda rota administrativa valida a sessão AQUI; esconder botão no navegador não é segurança.
+import ADMIN_UI from './admin-ui.txt';
+
+const CHUNK = 20 * 1024 * 1024;          // pedaço máximo guardado por chave do KV (limite do KV: 25 MiB)
+const QUOTA = 950 * 1024 * 1024;         // margem abaixo do 1 GB grátis do KV
+const SESSION_SECS = 60 * 60 * 24 * 30;  // login dura 30 dias
+const PBKDF2_ITER = 100000;              // máximo permitido pelo Workers
+
+const enc = new TextEncoder();
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+const now = () => Math.floor(Date.now() / 1000);
+
+const json = (data, status = 200, headers = {}) =>
+  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
+const fail = (status, msg, extra = {}) => json({ error: msg, ...extra }, status);
+
+/* ---------- banco ---------- */
+let schemaReady = false;
+async function schema(db) {
+  if (schemaReady) return;
+  await db.batch([
+    db.prepare('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL, created INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS attempts (ip TEXT NOT NULL, ts INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS docs (key TEXT PRIMARY KEY, value TEXT NOT NULL, rev INTEGER NOT NULL, updated INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL, ts INTEGER NOT NULL)'),
+    db.prepare('CREATE TABLE IF NOT EXISTS media (id TEXT PRIMARY KEY, name TEXT, type TEXT NOT NULL, size INTEGER NOT NULL, chunks INTEGER NOT NULL, done INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)'),
+  ]);
+  schemaReady = true;
+}
+
+/* ---------- senha e sessão ---------- */
+async function hashPassword(password, saltBytes) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: PBKDF2_ITER }, key, 256);
+  return b64u(bits);
+}
+function safeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+const sha256 = async s => b64u(await crypto.subtle.digest('SHA-256', enc.encode(s)));
+
+function getCookie(req, name) {
+  const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
+  return m ? m[1] : null;
+}
+function sessionCookie(token, maxAge) {
+  return `sid=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+}
+async function startSession(env, userId) {
+  const token = b64u(rand(32));
+  const t = now();
+  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, expires, created) VALUES (?,?,?,?)').bind(await sha256(token), userId, t + SESSION_SECS, t).run();
+  await env.DB.prepare('DELETE FROM sessions WHERE expires < ?').bind(t).run();
+  return sessionCookie(token, SESSION_SECS);
+}
+async function currentUser(req, env) {
+  const token = getCookie(req, 'sid');
+  if (!token || token.length > 80) return null;
+  const th = await sha256(token);
+  const row = await env.DB.prepare('SELECT s.expires, u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?').bind(th).first();
+  if (!row || row.expires < now()) return null;
+  if (row.expires - now() < SESSION_SECS / 2) { // renova enquanto ela continua usando
+    await env.DB.prepare('UPDATE sessions SET expires = ? WHERE token_hash = ?').bind(now() + SESSION_SECS, th).run();
+  }
+  return { id: row.id, username: row.username, th };
+}
+
+/* ---------- proteção ---------- */
+function sameOrigin(req) {
+  const o = req.headers.get('origin');
+  if (!o) return true;
+  try { return new URL(o).host === new URL(req.url).host; } catch { return false; }
+}
+async function tooManyAttempts(env, ip) {
+  const since = now() - 15 * 60;
+  await env.DB.prepare('DELETE FROM attempts WHERE ts < ?').bind(since).run();
+  const r = await env.DB.prepare('SELECT COUNT(*) n FROM attempts WHERE ip = ?').bind(ip).first();
+  return r.n >= 5;
+}
+const noteFail = (env, ip) => env.DB.prepare('INSERT INTO attempts (ip, ts) VALUES (?,?)').bind(ip, now()).run();
+
+/* ---------- validação do conteúdo ---------- */
+const SRC_OK = /^(\/media\/[a-f0-9]{16}|(videos|images)\/[A-Za-z0-9._\-\/]{1,120})$/;
+const RATIO_OK = /^\d{1,2}\/\d{1,2}$/;
+const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+function cleanWork(w) {
+  if (!w || typeof w !== 'object') throw new Error('trabalho inválido');
+  const out = { t: w.t === 'video' ? 'video' : 'design', title: str(w.title, 120), r: RATIO_OK.test(w.r) ? w.r : '16/9' };
+  if (w.src) { if (!SRC_OK.test(w.src) || w.src.includes('..')) throw new Error('arquivo inválido'); out.src = w.src; }
+  if (w.canva) {
+    let u; try { u = new URL(w.canva); } catch { throw new Error('link do Canva inválido'); }
+    if (u.protocol !== 'https:') throw new Error('link do Canva inválido');
+    out.canva = u.href;
+  }
+  return out;
+}
+function cleanItem(c, nested) {
+  if (!c || typeof c !== 'object') throw new Error('item inválido');
+  const id = str(c.id, 60);
+  if (!/^[a-z0-9-]{1,60}$/.test(id)) throw new Error('identificador inválido');
+  const out = { id, name: str(c.name, 120) || 'Sem título', mono: str(c.mono, 4), kind: str(c.kind, 120), desc: str(c.desc, 600) };
+  const ig = str(c.ig, 40);
+  if (ig) { if (!/^[A-Za-z0-9._]{1,40}$/.test(ig)) throw new Error('Instagram inválido'); out.ig = ig; }
+  if (!nested && c.cover) { if (!SRC_OK.test(c.cover) || c.cover.includes('..')) throw new Error('capa inválida'); out.cover = c.cover; }
+  if (Array.isArray(c.works)) { if (c.works.length > 300) throw new Error('trabalhos demais'); out.works = c.works.map(cleanWork); }
+  if (!nested && Array.isArray(c.children)) { if (c.children.length > 60) throw new Error('projetos demais'); out.children = c.children.map(k => cleanItem(k, true)); }
+  return out;
+}
+function cleanContent(arr) {
+  if (!Array.isArray(arr) || arr.length > 80) throw new Error('conteúdo inválido');
+  const clients = arr.map(c => cleanItem(c, false));
+  const ids = new Set();
+  for (const c of clients) for (const x of [c, ...(c.children || [])]) { if (ids.has(x.id)) throw new Error('identificador repetido'); ids.add(x.id); }
+  return clients;
+}
+const mediaIds = clients => {
+  const s = new Set();
+  const add = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); if (m) s.add(m[1]); };
+  for (const c of clients) { add(c.cover); for (const w of c.works || []) add(w.src); for (const k of c.children || []) for (const w of k.works || []) add(w.src); }
+  return s;
+};
+
+/* ---------- conteúdo ---------- */
+async function loadContent(env) {
+  const row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
+  if (row) return { clients: JSON.parse(row.value), rev: row.rev };
+  const seed = await (await env.ASSETS.fetch(new Request('https://assets.local/seed.json'))).json();
+  const clients = cleanContent(seed);
+  await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('content', ?, 1, ?)").bind(JSON.stringify(clients), now()).run();
+  const again = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
+  return { clients: JSON.parse(again.value), rev: again.rev };
+}
+
+async function deleteMedia(env, id) {
+  const row = await env.DB.prepare('SELECT chunks FROM media WHERE id = ?').bind(id).first();
+  if (!row) return;
+  for (let i = 0; i < row.chunks; i++) await env.MEDIA.delete(`m:${id}:${i}`);
+  await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(id).run();
+}
+async function usedBytes(env) {
+  const r = await env.DB.prepare('SELECT COALESCE(SUM(size),0) n FROM media').first();
+  return r.n;
+}
+
+/* ---------- servir arquivos (público, com suporte a Range para vídeo) ---------- */
+async function serveMedia(req, env, id) {
+  const m = await env.DB.prepare('SELECT type, size, chunks FROM media WHERE id = ? AND done = 1').bind(id).first();
+  if (!m) return new Response('Não encontrado', { status: 404 });
+  const headers = { 'content-type': m.type, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' };
+  let start = 0, end = m.size - 1, status = 200;
+  const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('range') || '');
+  if (rg && (rg[1] || rg[2])) {
+    if (rg[1] === '') { start = Math.max(m.size - Number(rg[2]), 0); }
+    else { start = Number(rg[1]); if (rg[2]) end = Math.min(Number(rg[2]), m.size - 1); }
+    if (start > end || start >= m.size) return new Response(null, { status: 416, headers: { 'content-range': `bytes */${m.size}` } });
+    status = 206;
+    headers['content-range'] = `bytes ${start}-${end}/${m.size}`;
+  }
+  headers['content-length'] = String(end - start + 1);
+  if (req.method === 'HEAD') return new Response(null, { status, headers });
+  const first = Math.floor(start / CHUNK), last = Math.floor(end / CHUNK);
+  const { readable, writable } = new TransformStream();
+  const w = writable.getWriter();
+  (async () => {
+    try {
+      for (let i = first; i <= last; i++) {
+        const buf = await env.MEDIA.get(`m:${id}:${i}`, 'arrayBuffer');
+        if (!buf) throw new Error('pedaço ausente');
+        const from = i === first ? start - i * CHUNK : 0;
+        const to = i === last ? end - i * CHUNK + 1 : buf.byteLength;
+        await w.write(new Uint8Array(buf, from, to - from));
+      }
+      await w.close();
+    } catch (e) { await w.abort(e); }
+  })();
+  return new Response(readable, { status, headers });
+}
+
+/* ---------- roteador ---------- */
+export default {
+  async fetch(req, env) {
+    const url = new URL(req.url);
+    const path = url.pathname;
+    try {
+      await schema(env.DB);
+
+      if (path.startsWith('/media/')) {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Método não permitido', { status: 405 });
+        return serveMedia(req, env, path.slice(7).split('/')[0]);
+      }
+      if (!path.startsWith('/api/')) return env.ASSETS.fetch(req);
+
+      const ip = req.headers.get('cf-connecting-ip') || 'local';
+      const method = req.method;
+
+      /* públicas */
+      if (path === '/api/content' && method === 'GET') {
+        const { clients, rev } = await loadContent(env);
+        return json({ clients, rev }, 200, { 'cache-control': 'no-cache' });
+      }
+      if (path === '/api/me' && method === 'GET') {
+        const u = await currentUser(req, env);
+        const n = await env.DB.prepare('SELECT COUNT(*) n FROM users').first();
+        return json({ admin: !!u, username: u ? u.username : null, needsSetup: n.n === 0 });
+      }
+
+      /* tudo que muda alguma coisa exige mesma origem + cabeçalho próprio (anti-CSRF) */
+      if (method !== 'GET' && method !== 'HEAD') {
+        if (!sameOrigin(req) || req.headers.get('x-requested-with') !== 'portfolio') return fail(403, 'Requisição bloqueada.');
+      }
+
+      if (path === '/api/setup' && method === 'POST') {
+        const n = await env.DB.prepare('SELECT COUNT(*) n FROM users').first();
+        if (n.n > 0) return fail(403, 'O acesso já foi configurado.');
+        const body = await req.json().catch(() => ({}));
+        const username = str(body.username, 40).toLowerCase();
+        const password = typeof body.password === 'string' ? body.password : '';
+        if (!/^[a-z0-9._-]{3,40}$/.test(username)) return fail(400, 'Use de 3 a 40 letras minúsculas, números, ponto, traço ou sublinhado no usuário.');
+        if (password.length < 10 || password.length > 200) return fail(400, 'A senha precisa ter pelo menos 10 caracteres.');
+        const salt = rand(16);
+        const hash = await hashPassword(password, salt);
+        const ins = await env.DB.prepare('INSERT INTO users (username, salt, hash, created) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM users)').bind(username, b64u(salt), hash, now()).run();
+        if (!ins.meta.changes) return fail(403, 'O acesso já foi configurado.');
+        const u = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
+        return json({ ok: true }, 200, { 'set-cookie': await startSession(env, u.id) });
+      }
+
+      if (path === '/api/login' && method === 'POST') {
+        if (await tooManyAttempts(env, ip)) return fail(429, 'Muitas tentativas. Aguarde 15 minutos e tente de novo.');
+        const body = await req.json().catch(() => ({}));
+        const username = str(body.username, 40).toLowerCase();
+        const password = typeof body.password === 'string' ? body.password.slice(0, 200) : '';
+        const u = await env.DB.prepare('SELECT id, salt, hash FROM users WHERE username = ?').bind(username).first();
+        const salt = u ? unb64u(u.salt) : rand(16); // gasta o mesmo tempo mesmo se o usuário não existir
+        const hash = await hashPassword(password, salt);
+        if (!u || !safeEqual(hash, u.hash)) { await noteFail(env, ip); return fail(401, 'Usuário ou senha incorretos.'); }
+        await env.DB.prepare('DELETE FROM attempts WHERE ip = ?').bind(ip).run();
+        return json({ ok: true }, 200, { 'set-cookie': await startSession(env, u.id) });
+      }
+
+      /* ===== daqui para baixo: SOMENTE administradora autenticada ===== */
+      const user = await currentUser(req, env);
+      if (!user) return fail(401, 'Faça login para continuar.');
+
+      if (path === '/api/admin-ui.js' && method === 'GET') {
+        return new Response(ADMIN_UI, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' } });
+      }
+      if (path === '/api/logout' && method === 'POST') {
+        await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(user.th).run();
+        return json({ ok: true }, 200, { 'set-cookie': sessionCookie('', 0) });
+      }
+      if (path === '/api/password' && method === 'POST') {
+        const body = await req.json().catch(() => ({}));
+        const row = await env.DB.prepare('SELECT salt, hash FROM users WHERE id = ?').bind(user.id).first();
+        const cur = await hashPassword(typeof body.current === 'string' ? body.current.slice(0, 200) : '', unb64u(row.salt));
+        if (!safeEqual(cur, row.hash)) return fail(403, 'Senha atual incorreta.');
+        const next = typeof body.next === 'string' ? body.next : '';
+        if (next.length < 10 || next.length > 200) return fail(400, 'A nova senha precisa ter pelo menos 10 caracteres.');
+        const salt = rand(16);
+        await env.DB.prepare('UPDATE users SET salt = ?, hash = ? WHERE id = ?').bind(b64u(salt), await hashPassword(next, salt), user.id).run();
+        await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, user.th).run();
+        return json({ ok: true });
+      }
+
+      if (path === '/api/content' && method === 'PUT') {
+        const raw = await req.text();
+        if (raw.length > 2_000_000) return fail(413, 'Conteúdo grande demais.');
+        let body; try { body = JSON.parse(raw); } catch { return fail(400, 'JSON inválido.'); }
+        let clients; try { clients = cleanContent(body.clients); } catch (e) { return fail(400, e.message); }
+        const cur = await loadContent(env);
+        if (Number(body.rev) !== cur.rev) return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.', { rev: cur.rev });
+        const t = now();
+        const res = await env.DB.prepare("UPDATE docs SET value = ?, rev = rev + 1, updated = ? WHERE key = 'content' AND rev = ?").bind(JSON.stringify(clients), t, cur.rev).run();
+        if (!res.meta.changes) return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.');
+        await env.DB.prepare('INSERT INTO history (value, ts) VALUES (?,?)').bind(JSON.stringify(cur.clients), t).run();
+        await env.DB.prepare('DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY id DESC LIMIT 30)').run();
+        // limpeza: apaga arquivos enviados que não aparecem mais em lugar nenhum (com 2h de folga para uploads em andamento)
+        const used = mediaIds(clients);
+        const all = await env.DB.prepare('SELECT id, created FROM media').all();
+        for (const m of all.results) if (!used.has(m.id) && m.created < t - 7200) await deleteMedia(env, m.id);
+        return json({ ok: true, rev: cur.rev + 1 });
+      }
+
+      if (path === '/api/usage' && method === 'GET') {
+        return json({ used: await usedBytes(env), quota: QUOTA });
+      }
+
+      if (path === '/api/media/init' && method === 'POST') {
+        const body = await req.json().catch(() => ({}));
+        const size = Number(body.size), type = String(body.type || '');
+        if (!Number.isFinite(size) || size <= 0) return fail(400, 'Arquivo vazio.');
+        if (!/^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm|quicktime))$/.test(type)) return fail(400, 'Tipo de arquivo não aceito. Use JPG, PNG, WEBP, GIF, MP4 ou WEBM.');
+        if (size > 500 * 1024 * 1024) return fail(413, 'Arquivo grande demais (máximo 500 MB).');
+        const used = await usedBytes(env);
+        if (used + size > QUOTA) return fail(507, `Sem espaço: usado ${(used / 1048576).toFixed(0)} MB de ${(QUOTA / 1048576).toFixed(0)} MB. Apague arquivos antigos antes de enviar.`);
+        const id = [...rand(8)].map(b => b.toString(16).padStart(2, '0')).join('');
+        await env.DB.prepare('INSERT INTO media (id, name, type, size, chunks, done, created) VALUES (?,?,?,?,?,0,?)').bind(id, str(body.name, 120), type, size, Math.ceil(size / CHUNK), now()).run();
+        return json({ id, chunk: CHUNK, chunks: Math.ceil(size / CHUNK) });
+      }
+      let m = /^\/api\/media\/([a-f0-9]{16})\/(\d+)$/.exec(path);
+      if (m && method === 'PUT') {
+        const row = await env.DB.prepare('SELECT size, chunks, done FROM media WHERE id = ?').bind(m[1]).first();
+        const i = Number(m[2]);
+        if (!row || row.done || i >= row.chunks) return fail(404, 'Envio inválido.');
+        const buf = await req.arrayBuffer();
+        const expect = i === row.chunks - 1 ? row.size - CHUNK * i : CHUNK;
+        if (buf.byteLength !== expect) return fail(400, 'Pedaço com tamanho errado.');
+        await env.MEDIA.put(`m:${m[1]}:${i}`, buf);
+        return json({ ok: true });
+      }
+      m = /^\/api\/media\/([a-f0-9]{16})\/done$/.exec(path);
+      if (m && method === 'POST') {
+        const row = await env.DB.prepare('SELECT chunks FROM media WHERE id = ?').bind(m[1]).first();
+        if (!row) return fail(404, 'Envio inválido.');
+        for (let i = 0; i < row.chunks; i++) if (!(await env.MEDIA.get(`m:${m[1]}:${i}`, { type: 'stream' }))) return fail(400, 'Envio incompleto, tente de novo.');
+        await env.DB.prepare('UPDATE media SET done = 1 WHERE id = ?').bind(m[1]).run();
+        return json({ ok: true, src: `/media/${m[1]}` });
+      }
+      m = /^\/api\/media\/([a-f0-9]{16})$/.exec(path);
+      if (m && method === 'DELETE') {
+        await deleteMedia(env, m[1]);
+        return json({ ok: true });
+      }
+
+      return fail(404, 'Rota não encontrada.');
+    } catch (e) {
+      return fail(500, 'Erro interno. Tente novamente.');
+    }
+  },
+};

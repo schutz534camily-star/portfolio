@@ -177,97 +177,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 <script>
 /* ===== CONTEÚDO =====
-   t: 'video' | 'design'   r: proporção (ex.: '9/16')   src: (opcional) endereço de um vídeo ou imagem do trabalho
-   Para trocar os espaços reservados por trabalhos reais, preencha "src" em cada item. */
-const CLIENTS = [
-  { id:'mp-racing', name:'MP Racing', mono:'MP', cover:'images/mp-racing-capa.jpg', ig:'mp.racing_estetica_premium', kind:'Social media e edição de vídeo',
-    desc:'Gestão do Instagram e edição dos vídeos publicados nele.',
-    works:[
-      {t:'video', title:'Vídeo 01', r:'9/16', src:'videos/mp-racing-01.mp4'},
-      {t:'video', title:'Vídeo 02', r:'9/16', src:'videos/mp-racing-02.mp4'},
-      {t:'video', title:'Vídeo 03', r:'9/16', src:'videos/mp-racing-03.mp4'},
-      {t:'video', title:'Vídeo 04', r:'9/16', src:'videos/mp-racing-04.mp4'},
-      {t:'video', title:'Vídeo 05', r:'9/16', src:'videos/mp-racing-05.mp4'},
-      {t:'video', title:'Vídeo 06', r:'9/16', src:'videos/mp-racing-06.mp4'},
-      {t:'video', title:'Vídeo 07', r:'9/16', src:'videos/mp-racing-07.mp4'},
-      {t:'video', title:'Vídeo 08', r:'9/16', src:'videos/mp-racing-08.mp4'},
-      {t:'video', title:'Vídeo 09', r:'9/16', src:'videos/mp-racing-09.mp4'},
-      {t:'video', title:'Vídeo 10', r:'9/16', src:'videos/mp-racing-10.mp4'},
-      {t:'video', title:'Vídeo 11', r:'9/16', src:'videos/mp-racing-11.mp4'},
-      {t:'video', title:'Vídeo 12', r:'9/16', src:'videos/mp-racing-12.mp4'},
-      {t:'design', title:'Social media do Instagram', r:'4/5'}
-    ]},
-  { id:'turismo', name:'Curta Caxias', mono:'CX', kind:'Vídeos, social media e papelaria',
-    desc:'Vídeos institucionais, cards para Instagram e material de papelaria.',
-    works:[
-      {t:'video', title:'Vídeos institucionais', r:'16/9'},
-      {t:'design', title:'Card 01', r:'1/1', src:'images/curta-caxias-01.jpg'},
-      {t:'design', title:'Card 02', r:'1/1', src:'images/curta-caxias-02.jpg'},
-      {t:'design', title:'Card 03', r:'1/1', src:'images/curta-caxias-03.jpg'},
-      {t:'design', title:'Card 04', r:'1/1', src:'images/curta-caxias-04.jpg'},
-      {t:'design', title:'Card 05', r:'1/1', src:'images/curta-caxias-05.jpg'},
-      {t:'design', title:'Card 06', r:'1/1', src:'images/curta-caxias-06.jpg'},
-      {t:'design', title:'Card 07', r:'1/1', src:'images/curta-caxias-07.jpg'},
-      {t:'design', title:'Card 08', r:'1/1', src:'images/curta-caxias-08.jpg'},
-      {t:'design', title:'Card 09', r:'1/1', src:'images/curta-caxias-09.jpg'},
-      {t:'design', title:'Card 10', r:'4/5', src:'images/curta-caxias-10.jpg'},
-      {t:'design', title:'Card 11', r:'4/5', src:'images/curta-caxias-11.jpg'},
-      {t:'design', title:'Card 12', r:'4/5', src:'images/curta-caxias-12.jpg'},
-      {t:'design', title:'Card 13', r:'4/5', src:'images/curta-caxias-13.jpg'},
-      {t:'design', title:'Card 14', r:'4/5', src:'images/curta-caxias-14.jpg'},
-      {t:'design', title:'Card 15', r:'4/5', src:'images/curta-caxias-15.jpg'},
-      {t:'design', title:'Card 16', r:'4/5', src:'images/curta-caxias-16.jpg'},
-      {t:'design', title:'Card 17', r:'4/5', src:'images/curta-caxias-17.jpg'},
-      {t:'design', title:'Material de papelaria', r:'4/3'},
-      {t:'design', title:'Carimbo', r:'1/1'}
-    ]},
-  { id:'formatura-bianca', name:'Formatura de Enfermagem de Bianca Toniolo Pedrotti', mono:'BP', kind:'Vídeo, slides e material da festa',
-    desc:'Vídeo de formatura e todo o material da festa: slides, fotos, cardápios e placas de mesa.',
-    works:[
-      {t:'video', title:'Vídeo de formatura', r:'16/9'},
-      {t:'design', title:'Slides', r:'16/9'},
-      {t:'design', title:'Fotos', r:'3/2'},
-      {t:'design', title:'Cardápio da festa de formatura', r:'3/4'},
-      {t:'design', title:'Cardápio de drinks', r:'3/4'},
-      {t:'design', title:'Placas de identificação das mesas', r:'4/3'}
-    ]},
-  { id:'cena', name:'Cena. Coletivo Criativo', mono:'CC', kind:'Logo e identidade visual',
-    desc:'Logos e identidades visuais criados para os projetos atendidos pelo coletivo.',
-    children:[
-      { id:'cena-kristina-daros', name:'Transista Kristina Daros', mono:'KD', ig:'kris_daroos', kind:'Logo e identidade visual',
-        desc:'Logo e identidade visual da transista Kristina Daros.',
-        works:[{t:'video', title:'Vídeo 01', r:'9/16', src:'videos/kristina-daros-01.mp4'},{t:'video', title:'Vídeo 02', r:'9/16', src:'videos/kristina-daros-02.mp4'},{t:'design', title:'Logo', r:'1/1'},{t:'design', title:'Identidade visual', r:'4/3'}]},
-      { id:'cena-xv-de-novembro', name:'Escola de Samba XV de Novembro', mono:'XV', ig:'academicosxvdenovembro', kind:'Logo e identidade visual',
-        desc:'Logo e identidade visual da Escola de Samba XV de Novembro.',
-        works:[{t:'video', title:'Vídeo 01', r:'16/9', src:'videos/xv-de-novembro-01.mp4'},{t:'design', title:'Logo', r:'1/1'},{t:'design', title:'Identidade visual', r:'4/3'}]},
-      { id:'cena-akacio-camargo', name:'Espaço Cultural Akácio Camargo', mono:'AC', kind:'Logo e identidade visual',
-        desc:'Logo e identidade visual do Espaço Cultural Akácio Camargo.',
-        works:[{t:'design', title:'Logo', r:'1/1'},{t:'design', title:'Identidade visual', r:'4/3'}]}
-    ]},
-  { id:'fsg', name:'Trabalhos Acadêmicos', mono:'FSG', kind:'',
-    desc:'Trabalhos de design feitos dentro da FSG, divididos por projeto.',
-    children:[
-      { id:'fsg-andercraft', name:'AnderCraft', mono:'AC', kind:'Projeto FSG',
-        desc:'Trabalhos de design do projeto AnderCraft.',
-        works:[{t:'design', title:'Trabalhos do AnderCraft', r:'4/3', canva:'https://canva.link/21cs3lpmb4q6cmp'}]},
-      { id:'fsg-amar-ao-proximo', name:'Instituto Amar Ao Próximo', mono:'AP', kind:'Projeto FSG',
-        desc:'Trabalhos de design do Instituto Amar Ao Próximo.',
-        works:[{t:'design', title:'Trabalhos do Instituto Amar Ao Próximo', r:'4/3', canva:'https://canva.link/pbidrdf97zka22w'}]}
-    ]},
-  { id:'primetech', name:'PrimeTech', mono:'PT', kind:'Social media e material de marca',
-    desc:'Card para Instagram, lacre de garantia e adesivos com logo e informações da empresa.',
-    works:[
-      {t:'design', title:'Card para Instagram', r:'4/5'},
-      {t:'design', title:'Lacre de garantia', r:'3/1'},
-      {t:'design', title:'Adesivos com logo e informações da empresa', r:'1/1'}
-    ]},
-  { id:'soda', name:'Soda', mono:'SO', kind:'Logo e brandbook',
-    desc:'Criação do logo e do brandbook da marca.',
-    works:[{t:'design', title:'Logo', r:'1/1'},{t:'design', title:'Brandbook', r:'4/3', canva:'https://canva.link/iuwnaoznszrvxbw'}]},
-  { id:'renata-costa', name:'Renata Costa', mono:'RC', ig:'renatacostacaxias', kind:'Apresentação em slides',
-    desc:'Apresentação em slides.',
-    works:[{t:'design', title:'Apresentação em slides', r:'16/9', canva:'https://canva.link/ni48jwkhqtdh1f4'}]}
-];
+   Vem do servidor (/api/content). Se o servidor estiver fora do ar, usa seed.json. */
+let CLIENTS = [], REV = 0, ORDER = [];
 
 /* ===== AUXILIARES ===== */
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -279,7 +190,7 @@ const nDes = c => worksOf(c).filter(w => w.t!=='video').length;
 const plural = (n,s,p) => n + ' ' + (n===1 ? s : p);
 
 /* vídeos sempre primeiro: ordem estável por quantidade de vídeos */
-const ORDER = CLIENTS.map((c,i)=>({c,i})).sort((a,b)=> nVid(b.c)-nVid(a.c) || a.i-b.i).map(x=>x.c);
+function computeOrder(){ ORDER = CLIENTS.map((c,i)=>({c,i})).sort((a,b)=> nVid(b.c)-nVid(a.c) || a.i-b.i).map(x=>x.c); }
 
 function chipsHTML(c){
   const v = nVid(c), d = nDes(c), k = (c.children||[]).length;
@@ -300,7 +211,9 @@ $('#foot2').innerHTML = CONTATOS;
 
 /* ===== GRADE ===== */
 const grid = $('#grid');
-grid.innerHTML = ORDER.map((c,i) => `
+const AD = () => window.PF_ADMIN || null;
+function renderGrid(){
+  grid.innerHTML = ORDER.map((c,i) => `
   <li style="--i:${i}">
     <button class="card" type="button" data-id="${c.id}" aria-label="Abrir ${esc(c.name)}">
       <div class="thumb" style="--a:${120+i*37}deg;--x:${(i*23)%80+10}%${c.cover?`;background:url(${c.cover}) center/cover no-repeat`:''}">
@@ -310,8 +223,9 @@ grid.innerHTML = ORDER.map((c,i) => `
         ${c.kind?`<p class="kind">${esc(c.kind)}</p>`:''}
         <div class="chips">${chipsHTML(c)}</div>
       </div>
-    </button>
-  </li>`).join('');
+    </button>${AD()?AD().card(c):''}
+  </li>`).join('') + (AD()?AD().newCard():'');
+}
 
 /* ===== PAINEL ===== */
 const overlay = $('#overlay'), pbody = $('#pbody'), pscroll = $('#pscroll'), crumbs = $('#crumbs'), closeBtn = $('#close');
@@ -341,7 +255,7 @@ function tileHTML(w, i){
     art = `<div class="ph"><span class="frame"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8C3F2" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="M3 17l5-5 4 4 3-3 4 4"/></svg></span><span>Seu trabalho aqui</span></div>`;
   }
   return `<figure class="tile${wide}" style="--i:${i};--r:${w.r||'16/9'}">
-    <div class="art">${art}</div>
+    <div class="art">${art}${AD()?AD().tile(curItem, curItem.works.indexOf(w)):''}</div>
     <figcaption class="cap">${video?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>
   </figure>`;
 }
@@ -352,8 +266,10 @@ function section(title, list, isVideo){
     <div class="tiles">${list.map(tileHTML).join('')}</div></section>`;
 }
 
+let curItem = null;
 function render(c, k){
   const item = k || c;
+  curItem = item;
   const works = item.works || [];
   const vids = works.filter(w => w.t==='video');
   const others = works.filter(w => w.t!=='video');
@@ -363,13 +279,14 @@ function render(c, k){
   const subs = (!k && c.children) ? `<section class="block"><h3><span class="dot o"></span>Projetos<small>${plural(c.children.length,'projeto','projetos')}</small></h3>
     <div class="subs">${c.children.map((s,i)=>`
       <button class="sub" type="button" data-go="${s.id}" style="--i:${i};--a:${120+i*50}deg">
-        <span><h4>${esc(s.name)}</h4><p>${esc(s.kind)}</p></span>
+        <span><h4>${esc(s.name)}</h4>${s.kind?`<p>${esc(s.kind)}</p>`:''}</span>
       </button>`).join('')}</div></section>` : '';
   const ig = item.ig ? `<a class="ig" href="https://www.instagram.com/${esc(item.ig)}/" target="_blank" rel="noopener noreferrer">@${esc(item.ig)}</a>` : '';
   pbody.innerHTML = `<h2 id="p-title">${esc(item.name)}</h2>
     ${ig}
-    <p class="lead">${esc(item.desc)}</p>
+    ${item.desc?`<p class="lead">${esc(item.desc)}</p>`:''}
     <div class="chips">${chipsHTML(item)}</div>
+    ${AD()?AD().head(item, !!k):''}
     ${subs}
     ${section('Vídeos', vids, true)}
     ${section(vids.length ? 'Design e materiais' : 'Trabalhos', others, false)}`;
@@ -449,7 +366,32 @@ document.addEventListener('keydown', e => {
   go(hit && hit.k ? hit.c.id : '');
 });
 addEventListener('hashchange', route);
-route();
+
+/* API para o painel de administração (só é carregado para quem está logada) */
+window.PF = {
+  get clients(){ return CLIENTS; }, get rev(){ return REV; }, set rev(v){ REV = v; },
+  setClients(list, rev){ CLIENTS = list; if(rev!=null) REV = rev; this.refresh(); },
+  get key(){ return currentKey; }, lookup, go, esc,
+  refresh(){
+    computeOrder(); renderGrid();
+    if(!overlay.hidden){
+      const hit = lookup(currentKey || '');
+      if(hit){ currentClient = hit.c; render(hit.c, hit.k); } else go('');
+    }
+  }
+};
+
+(async function boot(){
+  let data = null;
+  try{ const r = await fetch('/api/content'); if(r.ok) data = await r.json(); }catch(e){}
+  if(!data){ try{ data = { clients: await (await fetch('seed.json')).json(), rev: 0 }; }catch(e){ data = { clients: [], rev: 0 }; } }
+  CLIENTS = data.clients; REV = data.rev;
+  computeOrder(); renderGrid(); route();
+  try{
+    const me = await (await fetch('/api/me')).json();
+    if(me.admin){ const sc = document.createElement('script'); sc.src = '/api/admin-ui.js'; document.head.append(sc); }
+  }catch(e){}
+})();
 </script>
 </body>
 </html>

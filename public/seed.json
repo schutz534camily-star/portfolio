@@ -1,0 +1,440 @@
+[
+ {
+  "id": "mp-racing",
+  "name": "MP Racing",
+  "mono": "MP",
+  "cover": "images/mp-racing-capa.jpg",
+  "ig": "mp.racing_estetica_premium",
+  "kind": "Social media e edição de vídeo",
+  "desc": "Gestão do Instagram e edição dos vídeos publicados nele.",
+  "works": [
+   {
+    "t": "video",
+    "title": "Vídeo 01",
+    "r": "9/16",
+    "src": "videos/mp-racing-01.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 02",
+    "r": "9/16",
+    "src": "videos/mp-racing-02.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 03",
+    "r": "9/16",
+    "src": "videos/mp-racing-03.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 04",
+    "r": "9/16",
+    "src": "videos/mp-racing-04.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 05",
+    "r": "9/16",
+    "src": "videos/mp-racing-05.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 06",
+    "r": "9/16",
+    "src": "videos/mp-racing-06.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 07",
+    "r": "9/16",
+    "src": "videos/mp-racing-07.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 08",
+    "r": "9/16",
+    "src": "videos/mp-racing-08.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 09",
+    "r": "9/16",
+    "src": "videos/mp-racing-09.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 10",
+    "r": "9/16",
+    "src": "videos/mp-racing-10.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 11",
+    "r": "9/16",
+    "src": "videos/mp-racing-11.mp4"
+   },
+   {
+    "t": "video",
+    "title": "Vídeo 12",
+    "r": "9/16",
+    "src": "videos/mp-racing-12.mp4"
+   },
+   {
+    "t": "design",
+    "title": "Social media do Instagram",
+    "r": "4/5"
+   }
+  ]
+ },
+ {
+  "id": "turismo",
+  "name": "Curta Caxias",
+  "mono": "CX",
+  "kind": "Vídeos, social media e papelaria",
+  "desc": "Vídeos institucionais, cards para Instagram e material de papelaria.",
+  "works": [
+   {
+    "t": "video",
+    "title": "Vídeos institucionais",
+    "r": "16/9"
+   },
+   {
+    "t": "design",
+    "title": "Card 01",
+    "r": "1/1",
+    "src": "images/curta-caxias-01.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 02",
+    "r": "1/1",
+    "src": "images/curta-caxias-02.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 03",
+    "r": "1/1",
+    "src": "images/curta-caxias-03.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 04",
+    "r": "1/1",
+    "src": "images/curta-caxias-04.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 05",
+    "r": "1/1",
+    "src": "images/curta-caxias-05.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 06",
+    "r": "1/1",
+    "src": "images/curta-caxias-06.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 07",
+    "r": "1/1",
+    "src": "images/curta-caxias-07.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 08",
+    "r": "1/1",
+    "src": "images/curta-caxias-08.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 09",
+    "r": "1/1",
+    "src": "images/curta-caxias-09.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 10",
+    "r": "4/5",
+    "src": "images/curta-caxias-10.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 11",
+    "r": "4/5",
+    "src": "images/curta-caxias-11.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 12",
+    "r": "4/5",
+    "src": "images/curta-caxias-12.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 13",
+    "r": "4/5",
+    "src": "images/curta-caxias-13.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 14",
+    "r": "4/5",
+    "src": "images/curta-caxias-14.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 15",
+    "r": "4/5",
+    "src": "images/curta-caxias-15.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 16",
+    "r": "4/5",
+    "src": "images/curta-caxias-16.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Card 17",
+    "r": "4/5",
+    "src": "images/curta-caxias-17.jpg"
+   },
+   {
+    "t": "design",
+    "title": "Material de papelaria",
+    "r": "4/3"
+   },
+   {
+    "t": "design",
+    "title": "Carimbo",
+    "r": "1/1"
+   }
+  ]
+ },
+ {
+  "id": "formatura-bianca",
+  "name": "Formatura de Enfermagem de Bianca Toniolo Pedrotti",
+  "mono": "BP",
+  "kind": "Vídeo, slides e material da festa",
+  "desc": "Vídeo de formatura e todo o material da festa: slides, fotos, cardápios e placas de mesa.",
+  "works": [
+   {
+    "t": "video",
+    "title": "Vídeo de formatura",
+    "r": "16/9"
+   },
+   {
+    "t": "design",
+    "title": "Slides",
+    "r": "16/9"
+   },
+   {
+    "t": "design",
+    "title": "Fotos",
+    "r": "3/2"
+   },
+   {
+    "t": "design",
+    "title": "Cardápio da festa de formatura",
+    "r": "3/4"
+   },
+   {
+    "t": "design",
+    "title": "Cardápio de drinks",
+    "r": "3/4"
+   },
+   {
+    "t": "design",
+    "title": "Placas de identificação das mesas",
+    "r": "4/3"
+   }
+  ]
+ },
+ {
+  "id": "cena",
+  "name": "Cena. Coletivo Criativo",
+  "mono": "CC",
+  "kind": "Logo e identidade visual",
+  "desc": "Logos e identidades visuais criados para os projetos atendidos pelo coletivo.",
+  "children": [
+   {
+    "id": "cena-kristina-daros",
+    "name": "Transista Kristina Daros",
+    "mono": "KD",
+    "ig": "kris_daroos",
+    "kind": "Logo e identidade visual",
+    "desc": "Logo e identidade visual da transista Kristina Daros.",
+    "works": [
+     {
+      "t": "video",
+      "title": "Vídeo 01",
+      "r": "9/16",
+      "src": "videos/kristina-daros-01.mp4"
+     },
+     {
+      "t": "video",
+      "title": "Vídeo 02",
+      "r": "9/16",
+      "src": "videos/kristina-daros-02.mp4"
+     },
+     {
+      "t": "design",
+      "title": "Logo",
+      "r": "1/1"
+     },
+     {
+      "t": "design",
+      "title": "Identidade visual",
+      "r": "4/3"
+     }
+    ]
+   },
+   {
+    "id": "cena-xv-de-novembro",
+    "name": "Escola de Samba XV de Novembro",
+    "mono": "XV",
+    "ig": "academicosxvdenovembro",
+    "kind": "Logo e identidade visual",
+    "desc": "Logo e identidade visual da Escola de Samba XV de Novembro.",
+    "works": [
+     {
+      "t": "video",
+      "title": "Vídeo 01",
+      "r": "16/9",
+      "src": "videos/xv-de-novembro-01.mp4"
+     },
+     {
+      "t": "design",
+      "title": "Logo",
+      "r": "1/1"
+     },
+     {
+      "t": "design",
+      "title": "Identidade visual",
+      "r": "4/3"
+     }
+    ]
+   },
+   {
+    "id": "cena-akacio-camargo",
+    "name": "Espaço Cultural Akácio Camargo",
+    "mono": "AC",
+    "kind": "Logo e identidade visual",
+    "desc": "Logo e identidade visual do Espaço Cultural Akácio Camargo.",
+    "works": [
+     {
+      "t": "design",
+      "title": "Logo",
+      "r": "1/1"
+     },
+     {
+      "t": "design",
+      "title": "Identidade visual",
+      "r": "4/3"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fsg",
+  "name": "Trabalhos Acadêmicos",
+  "mono": "FSG",
+  "kind": "",
+  "desc": "Trabalhos de design feitos dentro da FSG, divididos por projeto.",
+  "children": [
+   {
+    "id": "fsg-andercraft",
+    "name": "AnderCraft",
+    "mono": "AC",
+    "kind": "Projeto FSG",
+    "desc": "Trabalhos de design do projeto AnderCraft.",
+    "works": [
+     {
+      "t": "design",
+      "title": "Trabalhos do AnderCraft",
+      "r": "4/3",
+      "canva": "https://canva.link/21cs3lpmb4q6cmp"
+     }
+    ]
+   },
+   {
+    "id": "fsg-amar-ao-proximo",
+    "name": "Instituto Amar Ao Próximo",
+    "mono": "AP",
+    "kind": "Projeto FSG",
+    "desc": "Trabalhos de design do Instituto Amar Ao Próximo.",
+    "works": [
+     {
+      "t": "design",
+      "title": "Trabalhos do Instituto Amar Ao Próximo",
+      "r": "4/3",
+      "canva": "https://canva.link/pbidrdf97zka22w"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "primetech",
+  "name": "PrimeTech",
+  "mono": "PT",
+  "kind": "Social media e material de marca",
+  "desc": "Card para Instagram, lacre de garantia e adesivos com logo e informações da empresa.",
+  "works": [
+   {
+    "t": "design",
+    "title": "Card para Instagram",
+    "r": "4/5"
+   },
+   {
+    "t": "design",
+    "title": "Lacre de garantia",
+    "r": "3/1"
+   },
+   {
+    "t": "design",
+    "title": "Adesivos com logo e informações da empresa",
+    "r": "1/1"
+   }
+  ]
+ },
+ {
+  "id": "soda",
+  "name": "Soda",
+  "mono": "SO",
+  "kind": "Logo e brandbook",
+  "desc": "Criação do logo e do brandbook da marca.",
+  "works": [
+   {
+    "t": "design",
+    "title": "Logo",
+    "r": "1/1"
+   },
+   {
+    "t": "design",
+    "title": "Brandbook",
+    "r": "4/3",
+    "canva": "https://canva.link/iuwnaoznszrvxbw"
+   }
+  ]
+ },
+ {
+  "id": "renata-costa",
+  "name": "Renata Costa",
+  "mono": "RC",
+  "ig": "renatacostacaxias",
+  "kind": "Apresentação em slides",
+  "desc": "Apresentação em slides.",
+  "works": [
+   {
+    "t": "design",
+    "title": "Apresentação em slides",
+    "r": "16/9",
+    "canva": "https://canva.link/ni48jwkhqtdh1f4"
+   }
+  ]
+ }
+]

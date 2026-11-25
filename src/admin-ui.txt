@@ -1,0 +1,388 @@
+/* Painel de administração — só é entregue pelo servidor para quem está logada (/api/admin-ui.js). */
+(() => {
+if (window.PF_ADMIN || !window.PF) return;
+const PF = window.PF;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = PF.esc;
+
+/* ---------- estilo ---------- */
+const st = document.createElement('style');
+st.textContent = `
+.pf-a{font-family:var(--f-body)}
+body.pf-preview .pf-a{display:none!important}
+.grid>li{position:relative}
+.pf-card-tools{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:3}
+.pf-btn{white-space:nowrap;border:1px solid var(--line);background:rgba(20,0,26,.82);color:var(--ink);border-radius:99px;padding:6px 12px;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;backdrop-filter:blur(6px);cursor:pointer}
+.pf-btn:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pf-btn.danger:hover{background:#ff5c7a;border-color:#ff5c7a;color:#2b0034}
+.pf-btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pf-btn.primary:hover{filter:brightness(1.08)}
+.pf-newcard{width:100%;height:100%;min-height:220px;border:2px dashed var(--line);border-radius:20px;background:rgba(0,0,0,.35);color:var(--ink);font-family:var(--f-display);font-weight:700;font-size:1.3rem;display:grid;place-items:center;align-content:center;gap:8px;cursor:pointer;transition:border-color .2s,background .2s}
+.pf-newcard:hover{border-color:var(--accent);background:rgba(0,0,0,.5)}
+.pf-newcard b{font-size:3rem;line-height:1;color:var(--accent)}
+.pf-head{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+.pf-head .pf-btn{font-size:.88rem;padding:9px 16px}
+.art .pf-tile-tools{position:absolute;top:8px;right:8px;display:flex;gap:5px;z-index:3;flex-wrap:wrap;justify-content:flex-end}
+.art .pf-tile-tools .pf-btn{padding:4px 9px;font-size:.7rem}
+.pf-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px);padding:8px 10px 8px 16px;border-radius:99px;background:rgba(20,0,26,.92);border:1px solid var(--line);backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:.82rem}
+.pf-bar .dot2{width:9px;height:9px;border-radius:50%;background:#5CFF9D;box-shadow:0 0 0 3px rgba(92,255,157,.25)}
+.pf-bar .meter{display:flex;flex-direction:column;gap:3px;min-width:120px}
+.pf-bar .meter i{display:block;height:5px;border-radius:9px;background:rgba(255,243,252,.18);overflow:hidden}
+.pf-bar .meter i b{display:block;height:100%;background:var(--accent);width:0}
+.pf-bar .meter span{font-size:.7rem;color:var(--muted)}
+.pf-modal-bg{position:fixed;inset:0;z-index:100;background:rgba(10,0,14,.72);display:grid;place-items:center;padding:16px;overflow:auto}
+.pf-modal{width:min(520px,100%);background:linear-gradient(145deg,#4a0058,#2b0034);border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.55);font-family:var(--f-body)}
+.pf-modal h3{font-size:1.4rem;margin-bottom:6px}
+.pf-modal p.msg{color:var(--muted);margin:6px 0 4px}
+.pf-modal label{display:block;margin-top:14px;font-weight:600;font-size:.88rem}
+.pf-modal label small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.pf-modal input[type=text],.pf-modal input[type=url],.pf-modal input[type=password],.pf-modal textarea,.pf-modal select{width:100%;margin-top:6px;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:var(--ink);font:inherit}
+.pf-modal textarea{min-height:90px;resize:vertical}
+.pf-modal .filebox{margin-top:6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pf-modal .filebox img{width:96px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.pf-modal .row{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;flex-wrap:wrap}
+.pf-modal .err{color:#ff9bb0;font-size:.85rem;margin-top:10px;min-height:1em}
+.pf-toasts{position:fixed;right:14px;bottom:84px;z-index:110;display:grid;gap:8px;width:min(340px,calc(100vw - 28px))}
+.pf-toast{background:rgba(20,0,26,.95);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:.88rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.pf-toast.ok{border-color:#5CFF9D}.pf-toast.bad{border-color:#ff5c7a}
+.pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
+.pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+body{padding-bottom:84px}.p-in{padding-bottom:150px!important}
+@media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:nowrap}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body{padding-bottom:64px}}
+.pf-modal [hidden]{display:none!important}
+`;
+document.head.append(st);
+
+/* ---------- avisos ---------- */
+const toasts = document.createElement('div'); toasts.className = 'pf-toasts pf-a'; document.body.append(toasts);
+function toast(msg, kind, ms = 3500) {
+  const t = document.createElement('div'); t.className = 'pf-toast ' + (kind || ''); t.textContent = msg; toasts.append(t);
+  if (ms) setTimeout(() => t.remove(), ms);
+  return t;
+}
+function progress(label) {
+  const t = document.createElement('div'); t.className = 'pf-toast';
+  t.innerHTML = '<div></div><div class="pbar"><b></b></div>'; t.firstChild.textContent = label; toasts.append(t);
+  return {
+    set(p, txt) { $('b', t).style.width = Math.round(p * 100) + '%'; t.firstChild.textContent = txt || label; },
+    done() { t.remove(); },
+    fail(msg) { t.className = 'pf-toast bad'; t.textContent = msg; setTimeout(() => t.remove(), 7000); }
+  };
+}
+
+/* ---------- servidor ---------- */
+class ApiError extends Error { constructor(m, status, data) { super(m); this.status = status; this.data = data; } }
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method, credentials: 'same-origin',
+    headers: { 'x-requested-with': 'portfolio', ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) { toast('Sua sessão acabou. Entre de novo.', 'bad', 0); setTimeout(() => location.href = '/admin', 1500); }
+  if (!r.ok) throw new ApiError(data.error || 'Erro no servidor', r.status, data);
+  return data;
+}
+let queue = Promise.resolve();
+function save() {
+  queue = queue.then(async () => {
+    try {
+      const r = await api('PUT', '/api/content', { clients: PF.clients, rev: PF.rev });
+      PF.rev = r.rev; toast('Salvo ✓', 'ok', 1800);
+    } catch (e) {
+      if (e.status === 409) { toast(e.message, 'bad', 0); setTimeout(() => location.reload(), 2500); }
+      else { toast(e.message, 'bad', 6000); await reload(); }
+      throw e;
+    }
+  });
+  return queue.catch(() => {});
+}
+async function reload() {
+  const r = await (await fetch('/api/content', { cache: 'no-store' })).json();
+  PF.setClients(r.clients, r.rev);
+}
+async function dropMedia(ids) {
+  for (const id of ids) { try { await api('DELETE', '/api/media/' + id); } catch (e) {} }
+  usage();
+}
+const mediaOf = v => { const m = v && /^\/media\/([a-f0-9]{16})$/.exec(v); return m ? [m[1]] : []; };
+const mediaInWorks = ws => (ws || []).flatMap(w => mediaOf(w.src));
+const mediaInItem = it => [...mediaOf(it.cover), ...mediaInWorks(it.works), ...(it.children || []).flatMap(k => mediaInWorks(k.works))];
+
+/* ---------- janelas ---------- */
+function modal({ title, message, fields = [], ok = 'Salvar', danger = false, cancel = 'Cancelar' }) {
+  return new Promise(resolve => {
+    const bg = document.createElement('div'); bg.className = 'pf-modal-bg pf-a';
+    const box = document.createElement('form'); box.className = 'pf-modal'; box.noValidate = true;
+    const h = document.createElement('h3'); h.textContent = title; box.append(h);
+    if (message) { const p = document.createElement('p'); p.className = 'msg'; p.textContent = message; box.append(p); }
+    const inputs = {};
+    for (const f of fields) {
+      const lab = document.createElement('label'); lab.append(f.label);
+      if (f.hint) { const sm = document.createElement('small'); sm.textContent = f.hint; lab.append(sm); }
+      let el;
+      if (f.type === 'textarea') { el = document.createElement('textarea'); el.value = f.value || ''; }
+      else if (f.type === 'select') { el = document.createElement('select'); for (const [v, l] of f.options) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === f.value) o.selected = true; el.append(o); } }
+      else if (f.type === 'image') {
+        el = document.createElement('div'); el.className = 'filebox';
+        const prev = document.createElement('img'); prev.hidden = !f.value; if (f.value) prev.src = f.value;
+        const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'pf-btn'; pick.textContent = f.value ? 'Trocar foto' : 'Escolher foto';
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'pf-btn danger'; rm.textContent = 'Remover'; rm.hidden = !f.value;
+        const file = document.createElement('input'); file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
+        el.state = { file: null, remove: false };
+        pick.onclick = () => file.click();
+        file.onchange = () => { const fl = file.files[0]; if (!fl) return; el.state = { file: fl, remove: false }; prev.src = URL.createObjectURL(fl); prev.hidden = false; rm.hidden = false; pick.textContent = 'Trocar foto'; };
+        rm.onclick = () => { el.state = { file: null, remove: true }; prev.hidden = true; rm.hidden = true; pick.textContent = 'Escolher foto'; };
+        el.append(prev, pick, rm, file);
+      }
+      else { el = document.createElement('input'); el.type = f.type || 'text'; el.value = f.value || ''; if (f.placeholder) el.placeholder = f.placeholder; if (f.max) el.maxLength = f.max; }
+      inputs[f.key] = el; lab.append(el); box.append(lab);
+    }
+    const err = document.createElement('div'); err.className = 'err'; box.append(err);
+    const row = document.createElement('div'); row.className = 'row';
+    const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'pf-btn'; cb.textContent = cancel;
+    const ob = document.createElement('button'); ob.type = 'submit'; ob.className = 'pf-btn ' + (danger ? 'danger' : 'primary'); ob.textContent = ok;
+    if (danger) { ob.style.background = '#ff5c7a'; ob.style.borderColor = '#ff5c7a'; ob.style.color = '#2b0034'; }
+    row.append(cb, ob); box.append(row); bg.append(box); document.body.append(bg);
+    const close = v => { removeEventListener('keydown', onKey, true); bg.remove(); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(null); } };
+    addEventListener('keydown', onKey, true);
+    cb.onclick = () => close(null);
+    box.onsubmit = e => {
+      e.preventDefault();
+      const out = {};
+      for (const f of fields) { const el = inputs[f.key]; out[f.key] = f.type === 'image' ? el.state : (el.value || '').trim(); if (f.required && !out[f.key]) { err.textContent = 'Preencha: ' + f.label; el.focus && el.focus(); return; } }
+      close(out);
+    };
+    const first = box.querySelector('input[type=text],input[type=url],input[type=password],textarea');
+    (first || ob).focus();
+  });
+}
+const confirmBox = (title, message, ok = 'Excluir') => modal({ title, message, ok, danger: true }).then(v => !!v);
+
+/* ---------- arquivos ---------- */
+const RATIOS = [['9/16', 'Vertical (9:16)'], ['16/9', 'Horizontal (16:9)'], ['4/5', 'Retrato (4:5)'], ['1/1', 'Quadrado (1:1)'], ['4/3', 'Horizontal clássico (4:3)'], ['3/4', 'Retrato (3:4)']];
+function nearestRatio(w, h) {
+  const q = w / h; let best = '1/1', d = 9;
+  for (const [r] of RATIOS) { const [a, b] = r.split('/').map(Number); const x = Math.abs(Math.log(q / (a / b))); if (x < d) { d = x; best = r; } }
+  return best;
+}
+async function prepareImage(file) {
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) throw new Error('Não consegui abrir a imagem "' + file.name + '".');
+  const w = bmp.width, h = bmp.height, scale = Math.min(1, 1800 / Math.max(w, h));
+  const small = file.type === 'image/gif' || (file.type === 'image/png' && file.size < 1.5e6) || (scale === 1 && file.size < 1.2e6);
+  if (small) return { blob: file, type: file.type, ratio: nearestRatio(w, h) };
+  const c = document.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .86));
+  return { blob, type: 'image/jpeg', ratio: nearestRatio(w, h) };
+}
+function videoRatio(file) {
+  return new Promise(resolve => {
+    const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; const u = URL.createObjectURL(file);
+    v.onloadedmetadata = () => { const r = v.videoWidth ? nearestRatio(v.videoWidth, v.videoHeight) : '16/9'; URL.revokeObjectURL(u); resolve(r); };
+    v.onerror = () => { URL.revokeObjectURL(u); resolve('16/9'); };
+    v.src = u;
+  });
+}
+function xhrPut(url, blob, onProg) {
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest(); x.open('PUT', url); x.withCredentials = true; x.setRequestHeader('x-requested-with', 'portfolio');
+    x.upload.onprogress = e => e.lengthComputable && onProg(e.loaded);
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch (e) {} x.status < 300 ? res(d) : rej(new ApiError(d.error || 'Falha no envio', x.status)); };
+    x.onerror = () => rej(new Error('Falha de conexão durante o envio.'));
+    x.send(blob);
+  });
+}
+/* envia um arquivo em pedaços e devolve { src, t, r } */
+async function upload(file) {
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(file.name);
+  const p = progress('Preparando ' + file.name + '…');
+  try {
+    let blob = file, type = file.type, ratio;
+    if (isVideo) {
+      if (!/^video\/(mp4|webm|quicktime)$/.test(type)) type = /\.webm$/i.test(file.name) ? 'video/webm' : 'video/mp4';
+      if (type === 'video/quicktime') toast('Arquivos .MOV podem não abrir no Chrome/Windows. O ideal é enviar em MP4.', '', 7000);
+      ratio = await videoRatio(file);
+    } else {
+      if (!file.type.startsWith('image/')) throw new Error('"' + file.name + '" não é imagem nem vídeo.');
+      ({ blob, type, ratio } = await prepareImage(file));
+    }
+    const init = await api('POST', '/api/media/init', { name: file.name, type, size: blob.size });
+    let sent = 0;
+    for (let i = 0; i < init.chunks; i++) {
+      const part = blob.slice(i * init.chunk, (i + 1) * init.chunk);
+      const base = sent;
+      await xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `Enviando ${file.name} — ${Math.round((base + loaded) / blob.size * 100)}%`));
+      sent += part.size;
+    }
+    const done = await api('POST', `/api/media/${init.id}/done`, {});
+    p.done(); usage();
+    return { src: done.src, t: isVideo ? 'video' : 'design', r: ratio };
+  } catch (e) { p.fail(e.message); throw e; }
+}
+function pickFiles(accept, multiple) {
+  return new Promise(resolve => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = accept; i.multiple = !!multiple; i.style.display = 'none';
+    i.onchange = () => { resolve([...i.files]); i.remove(); };
+    i.oncancel = () => { resolve([]); i.remove(); };
+    document.body.append(i); i.click();
+  });
+}
+
+/* ---------- utilidades de dados ---------- */
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'item';
+function uniqueId(name) {
+  const used = new Set(PF.clients.flatMap(c => [c.id, ...(c.children || []).map(k => k.id)]));
+  const base = slug(name); let id = base, n = 2;
+  while (used.has(id)) id = base + '-' + n++;
+  return id;
+}
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+const igClean = v => v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/.*$/, '');
+const findItem = id => { const h = PF.lookup(id); return h ? (h.k || h.c) : null; };
+const parentList = id => { const h = PF.lookup(id); if (!h) return null; return h.k ? { list: h.c.children, parent: h.c } : { list: PF.clients, parent: null }; };
+
+/* ---------- ações ---------- */
+const infoFields = (it, top) => [
+  { key: 'name', label: 'Nome', value: it.name, required: true, max: 120 },
+  { key: 'kind', label: 'Subtítulo (aparece embaixo do nome no card)', value: it.kind || '', max: 120 },
+  { key: 'desc', label: 'Descrição (aparece dentro da página)', type: 'textarea', value: it.desc || '' },
+  { key: 'ig', label: 'Instagram', hint: 'Só o @ (ex.: camilyschutz). Deixe vazio para não mostrar.', value: it.ig || '', max: 60 },
+  ...(top ? [{ key: 'cover', label: 'Foto de capa do card', type: 'image', value: it.cover || '' }] : [])
+];
+async function applyCover(it, v) {
+  if (v.remove) { const old = mediaOf(it.cover); delete it.cover; return old; }
+  if (v.file) { const up = await upload(v.file); const old = mediaOf(it.cover); it.cover = up.src; return old; }
+  return [];
+}
+
+const actions = {
+  async 'new-client'() {
+    const v = await modal({ title: 'Novo cliente', ok: 'Criar', fields: infoFields({ name: '' }, true) }); if (!v) return;
+    const it = { id: uniqueId(v.name), name: v.name, mono: initials(v.name), kind: v.kind, desc: v.desc, works: [] };
+    if (igClean(v.ig)) it.ig = igClean(v.ig);
+    try { await applyCover(it, v.cover); } catch (e) { return; }
+    PF.clients.push(it); PF.refresh(); await save();
+    PF.go(it.id);
+  },
+  async 'edit-item'(id) {
+    const it = findItem(id); if (!it) return; const top = !!PF.clients.includes(it);
+    const v = await modal({ title: 'Editar informações', fields: infoFields(it, top) }); if (!v) return;
+    let old = [];
+    try { if (top) old = await applyCover(it, v.cover); } catch (e) { return; }
+    it.name = v.name; it.kind = v.kind; it.desc = v.desc;
+    const ig = igClean(v.ig); if (ig) it.ig = ig; else delete it.ig;
+    PF.refresh(); await save(); dropMedia(old);
+  },
+  async 'del-item'(id) {
+    const hit = PF.lookup(id); if (!hit) return; const it = hit.k || hit.c;
+    const n = (it.works || []).length + (it.children || []).reduce((a, k) => a + (k.works || []).length, 0);
+    if (!await confirmBox('Excluir "' + it.name + '"?', n ? `Isso apaga ${n} trabalho(s) e os arquivos enviados dele. Não dá para desfazer.` : 'Não dá para desfazer.')) return;
+    const ids = mediaInItem(it);
+    const { list, parent } = parentList(id);
+    list.splice(list.indexOf(it), 1);
+    if (parent && !list.length) delete parent.children;
+    if (!hit.k || PF.key === id) PF.go(parent ? parent.id : '');
+    PF.refresh(); await save(); dropMedia(ids);
+  },
+  async 'add-files'(id) {
+    const it = findItem(id); if (!it) return;
+    const files = await pickFiles('image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.m4v,.webm', true); if (!files.length) return;
+    it.works = it.works || [];
+    for (const f of files) {
+      try {
+        const up = await upload(f);
+        it.works.push({ t: up.t, title: f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 120), r: up.r, src: up.src });
+        PF.refresh(); await save();
+      } catch (e) { /* aviso já mostrado */ }
+    }
+  },
+  async 'add-canva'(id) {
+    const it = findItem(id); if (!it) return;
+    const v = await modal({ title: 'Adicionar link do Canva', ok: 'Adicionar', fields: [
+      { key: 'title', label: 'Título', required: true, max: 120 },
+      { key: 'url', label: 'Link de compartilhamento do Canva', type: 'url', required: true, placeholder: 'https://canva.link/...' },
+      { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: '16/9' }] }); if (!v) return;
+    if (!/^https:\/\//.test(v.url)) return toast('O link precisa começar com https://', 'bad');
+    (it.works = it.works || []).push({ t: 'design', title: v.title, r: v.r, canva: v.url });
+    PF.refresh(); await save();
+  },
+  async 'new-sub'(id) {
+    const c = findItem(id); if (!c) return;
+    const v = await modal({ title: 'Novo projeto dentro de "' + c.name + '"', ok: 'Criar', fields: infoFields({ name: '' }, false).filter(f => f.key !== 'ig') }); if (!v) return;
+    (c.children = c.children || []).push({ id: uniqueId(v.name), name: v.name, mono: initials(v.name), kind: v.kind, desc: v.desc, works: [] });
+    PF.refresh(); await save();
+  },
+  async 'edit-work'(id, i) {
+    const it = findItem(id); const w = it && it.works[i]; if (!w) return;
+    const f = [{ key: 'title', label: 'Título', value: w.title, required: true, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: w.r }];
+    if (w.canva) f.splice(1, 0, { key: 'url', label: 'Link do Canva', type: 'url', value: w.canva, required: true });
+    const v = await modal({ title: 'Editar trabalho', fields: f }); if (!v) return;
+    w.title = v.title; w.r = v.r; if (w.canva && /^https:\/\//.test(v.url)) w.canva = v.url;
+    PF.refresh(); await save();
+  },
+  async 'replace-work'(id, i) {
+    const it = findItem(id); const w = it && it.works[i]; if (!w) return;
+    const [f] = await pickFiles('image/*,video/mp4,video/webm,video/quicktime,.mp4,.mov,.m4v,.webm', false); if (!f) return;
+    try {
+      const up = await upload(f); const old = mediaOf(w.src);
+      w.src = up.src; w.t = up.t; w.r = up.r; delete w.canva;
+      PF.refresh(); await save(); dropMedia(old);
+    } catch (e) {}
+  },
+  async 'del-work'(id, i) {
+    const it = findItem(id); const w = it && it.works[i]; if (!w) return;
+    if (!await confirmBox('Excluir "' + w.title + '"?', 'O arquivo enviado também será apagado. Não dá para desfazer.')) return;
+    const old = mediaOf(w.src); it.works.splice(i, 1);
+    PF.refresh(); await save(); dropMedia(old);
+  },
+  async password() {
+    const v = await modal({ title: 'Trocar senha', ok: 'Trocar', fields: [
+      { key: 'current', label: 'Senha atual', type: 'password', required: true },
+      { key: 'next', label: 'Nova senha', hint: 'Mínimo de 10 caracteres.', type: 'password', required: true }] }); if (!v) return;
+    try { await api('POST', '/api/password', v); toast('Senha trocada ✓', 'ok'); } catch (e) { toast(e.message, 'bad', 6000); }
+  },
+  async logout() { try { await api('POST', '/api/logout', {}); } catch (e) {} location.reload(); },
+  preview() { const on = document.body.classList.toggle('pf-preview'); $('[data-act=preview]').textContent = on ? 'Voltar a editar' : 'Ver como visitante'; }
+};
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || !actions[b.dataset.act]) return;
+  e.preventDefault(); e.stopPropagation();
+  const a = b.dataset.act, id = b.dataset.id, i = b.dataset.i !== undefined ? Number(b.dataset.i) : undefined;
+  actions[a](id, i);
+}, true);
+
+/* ---------- peças injetadas no site ---------- */
+const btn = (act, label, id, extra = '', cls = '') => `<button type="button" class="pf-btn ${cls}" data-act="${act}" data-id="${esc(id || '')}" ${extra}>${label}</button>`;
+window.PF_ADMIN = {
+  card: c => `<div class="pf-a pf-card-tools">${btn('edit-item', '✎ Editar', c.id)}${btn('del-item', '🗑', c.id, 'title="Excluir"', 'danger')}</div>`,
+  newCard: () => `<li class="pf-a"><button type="button" class="pf-newcard" data-act="new-client"><b>+</b>Novo cliente</button></li>`,
+  head: (item, isSub) => `<div class="pf-a pf-head">
+    ${btn('add-files', '+ Foto ou vídeo', item.id, '', 'primary')}
+    ${btn('add-canva', '+ Link do Canva', item.id)}
+    ${isSub ? '' : btn('new-sub', '+ Novo projeto (galeria)', item.id)}
+    ${btn('edit-item', '✎ Editar informações', item.id)}
+    ${btn('del-item', '🗑 Excluir', item.id, '', 'danger')}</div>`,
+  tile: (item, i) => `<div class="pf-a pf-tile-tools">
+    ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar título e formato"`)}
+    ${btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
+    ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`
+};
+
+/* ---------- barra do administrador ---------- */
+const bar = document.createElement('div'); bar.className = 'pf-bar';
+bar.innerHTML = `<span class="dot2"></span><b>Modo administradora</b>
+  <span class="meter"><i><b id="pf-m"></b></i><span id="pf-t">Calculando espaço…</span></span>
+  <button type="button" class="pf-btn" data-act="preview">Ver como visitante</button>
+  <button type="button" class="pf-btn" data-act="password">Senha</button>
+  <button type="button" class="pf-btn" data-act="logout">Sair</button>`;
+document.body.append(bar);
+async function usage() {
+  try { const u = await api('GET', '/api/usage'); $('#pf-m').style.width = Math.min(100, u.used / u.quota * 100) + '%'; $('#pf-t').textContent = `Espaço: ${(u.used / 1048576).toFixed(0)} MB de ${(u.quota / 1048576).toFixed(0)} MB`; } catch (e) {}
+}
+usage();
+PF.refresh();
+})();
