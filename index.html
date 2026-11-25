@@ -45,10 +45,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hero h1{font-weight:800;font-size:clamp(2.6rem,9vw,6.6rem);max-width:12ch}
 .hero h1 .mov{color:#A524BF}
 .hero h1 .ponto{color:#FFFFFF}
-.hero .linha{display:flex;align-items:center;justify-content:flex-end;gap:16px;height:calc(clamp(2.6rem,9vw,6.6rem)*1.02)}
+.hero .linha{display:flex;align-items:center;justify-content:flex-end;align-items:flex-end;height:calc(clamp(2.6rem,9vw,6.6rem)*1.02);padding-bottom:calc(clamp(2.6rem,9vw,6.6rem)*.01)}
 .hero .nome{margin:0;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:clamp(.85rem,3.2vw,1.9rem);max-width:none;white-space:nowrap}
-.hero .assinatura{display:block;margin:0;width:clamp(70px,17vw,220px);height:auto}
-@media (max-width:640px){.hero{grid-template-columns:1fr}.hero .linha{height:auto;margin-top:14px}.hero .nome{font-size:1.1rem}.hero .assinatura{width:110px}}
+.hero .assinatura{display:block;margin:0;width:clamp(90px,19vw,250px);height:auto}
+@media (max-width:640px){.hero{grid-template-columns:1fr}.hero .linha{height:auto;margin-top:14px;padding-bottom:0}.hero .assinatura{width:130px}}
 .hero p{margin-top:20px;max-width:52ch;color:var(--muted);font-size:clamp(1rem,2.2vw,1.2rem)}
 .timeline{margin-top:clamp(28px,5vw,52px);border:1px solid var(--line);border-radius:14px;background:rgba(36,0,44,.38);padding:14px 16px 16px}
 .tl-head{display:flex;justify-content:space-between;gap:12px;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
@@ -153,7 +153,6 @@ button{font:inherit;color:inherit;cursor:pointer}
   <section class="hero">
     <h1>Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1>
     <div class="linha">
-      <p class="nome">Camily Schütz</p>
       <img class="assinatura" src="assinatura.png" alt="Assinatura de Camily Schütz">
     </div>
   </section>
