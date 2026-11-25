@@ -105,7 +105,8 @@ body.pf-sel .tile video{pointer-events:none}
 .ml-row{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25)}
 .ml-th{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#000}
 .ml-tx{min-width:0;display:grid;gap:2px}.ml-tx b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem}.ml-tx small{color:var(--muted)}
-.pf-sec{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px}
+.pf-sec,.pf-lay{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px}
+.pf-lay{margin-top:-6px}.pf-lay .pf-btn{padding:4px 10px;font-size:.74rem}
 .pf-sec .pf-btn{padding:5px 12px;font-size:.78rem}
 .pf-empty{color:var(--muted);font-size:.9rem;border:1px dashed var(--line);border-radius:14px;padding:18px;margin:0}
 .pf-modal.about{width:min(920px,100%)}
@@ -1160,6 +1161,17 @@ async function applyCover(it, v) {
   return [];
 }
 
+async function layMove(id, key, op) {
+  const it = findItem(id); if (!it) return;
+  const rows = PF.layout(it).map(r => r.slice()), r = rows.findIndex(x => x.includes(key)); if (r < 0) return;
+  const row = rows[r], pair = row.length === 2;
+  if (op === 'up') { if (pair) { row.splice(row.indexOf(key), 1); rows.splice(r, 0, [key]); } else if (r > 0) [rows[r - 1], rows[r]] = [rows[r], rows[r - 1]]; else return; }
+  else if (op === 'down') { if (pair) { row.splice(row.indexOf(key), 1); rows.splice(r + 1, 0, [key]); } else if (r < rows.length - 1) [rows[r + 1], rows[r]] = [rows[r], rows[r + 1]]; else return; }
+  else if (op === 'join') { if (pair || r < 1 || rows[r - 1].length !== 1) return; rows[r - 1].push(key); rows.splice(r, 1); }
+  else if (op === 'split') { if (!pair) return; row.splice(row.indexOf(key), 1); rows.splice(r + 1, 0, [key]); }
+  else if (op === 'swap') { if (!pair) return; row.reverse(); }
+  it.layout = rows; PF.refresh(); await save();
+}
 const actions = {
   async 'new-client'() {
     const v = await modal({ title: 'Novo cliente', ok: 'Criar', fields: infoFields({ name: '' }, true) }); if (!v) return;
@@ -1371,6 +1383,11 @@ const actions = {
       { key: 'next', label: 'Nova senha', hint: 'Mínimo de 10 caracteres.', type: 'password', required: true }] }); if (!v) return;
     try { await api('POST', '/api/password', v); toast('Senha trocada ✓', 'ok'); } catch (e) { toast(e.message, 'bad', 6000); }
   },
+  'lay-up'(id, _i, _d, g) { return layMove(id, g, 'up'); },
+  'lay-down'(id, _i, _d, g) { return layMove(id, g, 'down'); },
+  'lay-join'(id, _i, _d, g) { return layMove(id, g, 'join'); },
+  'lay-split'(id, _i, _d, g) { return layMove(id, g, 'split'); },
+  'lay-swap'(id, _i, _d, g) { return layMove(id, g, 'swap'); },
   'sel-toggle'() {
     const on = document.body.classList.toggle('pf-sel'); SEL = new Set(); SELCTX = PF.key;
     document.querySelector('[data-act=sel-toggle]').textContent = on ? 'Cancelar seleção' : 'Selecionar vários'; updSel();
@@ -1449,6 +1466,14 @@ window.PF_ADMIN = {
     ${btn('edit-item', '✎ Editar informações', item.id)}
     ${btn('del-item', '🗑 Excluir', item.id, '', 'danger')}</div>`,
   sec: (item, key, custom) => `<div class="pf-a pf-sec">${btn('rename-sec', '✎ Renomear', item.id, `data-g="${esc(key)}"`)}${custom ? btn('add-files', '+ Foto ou vídeo', item.id, `data-g="${esc(key)}"`) + btn('add-carousel', '+ Carrossel', item.id, `data-g="${esc(key)}"`) + btn('add-canva', '+ Link do Canva', item.id, `data-g="${esc(key)}"`) + btn('del-sec', '🗑 Apagar categoria', item.id, `data-g="${esc(key)}"`, 'danger') : ''}</div>`,
+  lay: (item, key) => {
+    const rows = PF.layout(item), r = rows.findIndex(x => x.includes(key)); if (r < 0) return '';
+    const row = rows[r], pair = row.length === 2, g = `data-g="${esc(key)}"`;
+    return `<div class="pf-a pf-lay"><span style="opacity:.65;font-size:.74rem;align-self:center">Posição:</span>
+      ${r > 0 || pair ? btn('lay-up', '↑ Subir', item.id, g) : ''}${r < rows.length - 1 || pair ? btn('lay-down', '↓ Descer', item.id, g) : ''}
+      ${!pair && r > 0 && rows[r - 1].length === 1 ? btn('lay-join', '◫ Lado a lado com a de cima', item.id, g) : ''}
+      ${pair ? btn('lay-swap', '⇄ Trocar de lado', item.id, g) + btn('lay-split', '▭ Separar', item.id, g) : ''}</div>`;
+  },
   tile: (item, i) => {
     const w = item.works[i] || {}; const car = w.t === 'carousel';
     const crop = !car && w.t !== 'video' && w.src && !w.canva;

@@ -148,6 +148,8 @@ main.wrap{width:100%;flex:1 0 auto}
 .p-in .lead{font-family:var(--ff-lead);margin-top:16px;color:var(--t-lead);max-width:60ch;font-size:calc(clamp(1rem,2vw,1.15rem)*var(--z-lead,1))}
 .p-in .chips{margin-top:20px;padding-top:0}
 .block{margin-top:clamp(28px,5vw,48px)}
+.secrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(20px,3.5vw,44px);align-items:start}
+@media (max-width:820px){.secrow{grid-template-columns:minmax(0,1fr)}}
 .block>h3{font-family:var(--ff-blk);color:var(--t-blk);font-size:calc(1.15rem*var(--z-blk,1));font-weight:700;display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:18px}
 .block>h3 small{font-family:var(--f-body);font-weight:400;font-size:.85rem;color:var(--muted)}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--detail)}
@@ -459,11 +461,23 @@ function section(title, list, isVideo, key, custom){
   const inner = list.length ? `<div class="tiles">${list.map((w,i)=>tileHTML(w,i,!custom)).join('')}</div>`
     : `<p class="pf-a pf-empty">Categoria vazia. Use os botões acima para adicionar. <em>(visível só para você)</em></p>`;
   return `<section class="block" data-sec="${esc(key)}"><h3><span class="dot${isVideo?'':' o'}"></span>${esc(title)}<small>${plural(list.length,'trabalho','trabalhos')}</small></h3>
-    ${ad?ad.sec(curItem,key,!!custom,title):''}${inner}</section>`;
+    ${ad?ad.sec(curItem,key,!!custom,title)+ad.lay(curItem,key):''}${inner}</section>`;
 }
 
-let curItem = null;
+let curItem = null, curNested = false;
+/* ordem e colunas das categorias: lista de linhas, cada linha com 1 ou 2 categorias (p = Projetos, v = Vídeos, d = Design/Trabalhos, ou o id da categoria) */
+function layoutRows(item, nested){
+  const all = []; if(!nested && item.children) all.push('p'); all.push('v','d', ...(item.groups||[]).map(g => g.id));
+  const seen = new Set(), rows = [];
+  for(const r of (item.layout||[])){
+    const row = (Array.isArray(r) ? r : []).filter(k => all.includes(k) && !seen.has(k) && seen.add(k)).slice(0,2);
+    if(row.length) rows.push(row);
+  }
+  for(const k of all) if(!seen.has(k)){ if(k==='p') rows.unshift([k]); else rows.push([k]); }
+  return rows;
+}
 function render(c, k){
+  curNested = !!k;
   const item = k || c;
   curItem = item;
   const works = vis(item.works || []);
@@ -474,7 +488,7 @@ function render(c, k){
   crumbs.innerHTML = `<button type="button" data-go="">Portfólio</button><span aria-hidden="true">›</span>` +
     (k ? `<button type="button" data-go="${c.id}">${esc(c.name||'Projeto')}</button><span aria-hidden="true">›</span><span aria-current="page">${esc(k.name||'Projeto')}</span>`
        : `<span aria-current="page">${esc(c.name||'Projeto')}</span>`);
-  const subs = (!k && c.children) ? `<section class="block"><h3><span class="dot o"></span>Projetos<small>${plural(c.children.length,'projeto','projetos')}</small></h3>
+  const subs = (!k && c.children) ? `<section class="block" data-sec="p"><h3><span class="dot o"></span>Projetos<small>${plural(c.children.length,'projeto','projetos')}</small></h3>${AD()?AD().lay(item,'p'):''}
     <div class="subs">${c.children.map((s,i)=>`
       <div class="subw" data-sid="${s.id}"><button class="sub" type="button" data-go="${s.id}" style="--i:${i};--a:${120+i*50}deg">
         <span><h4>${esc(s.name||'Projeto')}</h4>${s.kind?`<p>${esc(s.kind)}</p>`:''}</span>
@@ -485,10 +499,12 @@ function render(c, k){
     ${item.desc?`<p class="lead">${esc(item.desc)}</p>`:''}
     <div class="chips">${chipsHTML(item)}</div>
     ${AD()?AD().head(item, !!k):''}
-    ${subs}
-    ${section(item.secV||'Vídeos', vids, true, 'v')}
-    ${section(item.secD||(vids.length ? 'Design e materiais' : 'Trabalhos'), others, false, 'd')}
-    ${groups.map(g => section(g.name||'Categoria', works.filter(w => w.g===g.id), false, g.id, true)).join('')}`;
+    ${layoutRows(item, !!k).map(row => {
+      const h = row.map(key => key==='p' ? subs : key==='v' ? section(item.secV||'Vídeos', vids, true, 'v')
+        : key==='d' ? section(item.secD||(vids.length ? 'Design e materiais' : 'Trabalhos'), others, false, 'd')
+        : (g => g ? section(g.name||'Categoria', works.filter(w => w.g===g.id), false, g.id, true) : '')(groups.find(g => g.id===key))).filter(Boolean);
+      return h.length>1 ? `<div class="secrow">${h.join('')}</div>` : h.join('');
+    }).join('')}`;
 }
 
 function originClip(c){
@@ -635,7 +651,7 @@ window.PF = {
   setClients(list, rev, footer, settings){ CLIENTS = list; if(rev!=null) REV = rev; if(footer) FOOTER = footer; if(settings) SETTINGS = settings; this.refresh(); },
   get settings(){ return SETTINGS; }, set settings(v){ SETTINGS = v; },
   get footer(){ return FOOTER; }, set footer(v){ FOOTER = v; },
-  get key(){ return currentKey; }, lookup, go, esc,
+  get key(){ return currentKey; }, lookup, go, esc, layout: item => layoutRows(item, curNested),
   refresh(){
     computeOrder(); renderGrid(); renderFooter(); applySettings();
     if(!overlay.hidden){

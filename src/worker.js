@@ -127,6 +127,11 @@ function cleanItem(c, nested) {
   if (ig) { if (!/^[A-Za-z0-9._]{1,40}$/.test(ig)) throw new Error('Instagram inválido'); out.ig = ig; }
   if (!nested && c.cover) { if (!SRC_OK.test(c.cover) || c.cover.includes('..')) throw new Error('capa inválida'); out.cover = c.cover; }
   const sv = str(c.secV, 60), sd = str(c.secD, 60); if (sv) out.secV = sv; if (sd) out.secD = sd;
+  if (Array.isArray(c.layout)) {
+    const seenL = new Set(), rows = [];
+    for (const r of c.layout) { if (!Array.isArray(r)) continue; const row = r.filter(k => typeof k === 'string' && /^[a-z0-9]{1,12}$/.test(k) && !seenL.has(k) && seenL.add(k)).slice(0, 2); if (row.length) rows.push(row); }
+    if (rows.length) out.layout = rows;
+  }
   if (Array.isArray(c.groups)) {
     const seen = new Set();
     out.groups = c.groups.map(g => {
