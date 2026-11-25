@@ -231,6 +231,12 @@ async function deleteMedia(env, id) {
   for (let i = 0; i < row.chunks; i++) await env.MEDIA.delete(`m:${id}:${i}`);
   await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(id).run();
 }
+async function usedMediaIds(env) {
+  const { clients, settings } = await loadContent(env);
+  const used = mediaIds(clients);
+  for (const m of JSON.stringify(settings).matchAll(/\/media\/([a-f0-9]{16})/g)) used.add(m[1]);
+  return used;
+}
 async function usedBytes(env) {
   const r = await env.DB.prepare('SELECT COALESCE(SUM(size),0) n FROM media').first();
   return r.n;
@@ -421,6 +427,8 @@ export default {
         const buf = await req.arrayBuffer();
         const expect = i === row.chunks - 1 ? row.size - CHUNK * i : CHUNK;
         if (buf.byteLength !== expect) return fail(400, 'Pedaço com tamanho errado.');
+        // se o envio foi cancelado (arquivo apagado) enquanto o pedaço chegava, não grava
+        if (!(await env.DB.prepare('SELECT 1 x FROM media WHERE id = ?').bind(m[1]).first())) return fail(404, 'Envio cancelado.');
         await env.MEDIA.put(`m:${m[1]}:${i}`, buf);
         return json({ ok: true });
       }
@@ -433,8 +441,15 @@ export default {
         await env.DB.prepare('UPDATE media SET done = 1 WHERE id = ?').bind(m[1]).run();
         return json({ ok: true, src: `/media/${m[1]}` });
       }
+      if (path === '/api/media' && method === 'GET') {
+        const used = await usedMediaIds(env);
+        const rows = await env.DB.prepare('SELECT id, name, type, size, done, created FROM media ORDER BY created DESC').all();
+        return json({ files: rows.results.map(r => ({ ...r, used: used.has(r.id) })) });
+      }
       m = /^\/api\/media\/([a-f0-9]{16})$/.exec(path);
       if (m && method === 'DELETE') {
+        const row = await env.DB.prepare('SELECT done FROM media WHERE id = ?').bind(m[1]).first();
+        if (row && row.done && (await usedMediaIds(env)).has(m[1])) return fail(409, 'Este arquivo está em uso no site. Tire ele do card primeiro.');
         await deleteMedia(env, m[1]);
         return json({ ok: true });
       }

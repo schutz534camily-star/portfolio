@@ -44,6 +44,7 @@ body.pf-preview .pf-a{display:none!important}
 .pf-modal .err{color:#ff9bb0;font-size:.85rem;margin-top:10px;min-height:1em}
 .pf-toasts{position:fixed;right:14px;bottom:84px;z-index:110;display:grid;gap:8px;width:min(340px,calc(100vw - 28px))}
 .pf-toast{background:rgba(20,0,26,.95);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:.88rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.pf-toast .pf-cancel{margin-top:8px;padding:5px 12px;font-size:.78rem}
 .pf-toast.ok{border-color:#5CFF9D}.pf-toast.bad{border-color:#ff5c7a}
 .pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
 .pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
@@ -92,6 +93,10 @@ body.pf-on .rodape{padding-bottom:96px}
 .frow .bt{grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end}
 .pf-bar,.pf-modal-bg,.pf-toasts,.pf-btn{--ink:#FFF3FC;--muted:#E8C3F2;--accent:#FFC94A;--accent-ink:#2B0034;--line:rgba(255,243,252,.24);--f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;--f-display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif}
 .pf-modal{color:#FFF3FC}
+.ml-list{display:grid;gap:8px;margin-top:10px}
+.ml-row{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25)}
+.ml-th{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#000}
+.ml-tx{min-width:0;display:grid;gap:2px}.ml-tx b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem}.ml-tx small{color:var(--muted)}
 .pf-modal.about{width:min(920px,100%)}
 .ab-live{position:sticky;top:0;z-index:5;margin:12px 0 4px;padding:12px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(rgba(43,0,52,.85),rgba(43,0,52,.85)),#000;max-height:34vh;overflow:auto}
 .ab-live>small{display:block;color:var(--muted);font-size:.74rem;margin-bottom:8px}
@@ -171,10 +176,13 @@ function toast(msg, kind, ms = 3500) {
   if (ms) setTimeout(() => t.remove(), ms);
   return t;
 }
-function progress(label) {
+function progress(label, onCancel) {
   const t = document.createElement('div'); t.className = 'pf-toast';
   t.innerHTML = '<div></div><div class="pbar"><b></b></div>'; t.firstChild.textContent = label; toasts.append(t);
+  let cb = null;
+  if (onCancel) { cb = document.createElement('button'); cb.type = 'button'; cb.className = 'pf-btn pf-cancel'; cb.textContent = '✕ Cancelar envio'; cb.onclick = () => { cb.disabled = true; cb.textContent = 'Cancelando…'; onCancel(); }; t.append(cb); }
   return {
+    lock() { if (cb) cb.hidden = true; },
     set(p, txt) { $('b', t).style.width = Math.round(p * 100) + '%'; t.firstChild.textContent = txt || label; },
     done() { t.remove(); },
     fail(msg) { t.className = 'pf-toast bad'; t.textContent = msg; setTimeout(() => t.remove(), 7000); }
@@ -345,9 +353,9 @@ function videoRatio(file) {
     v.src = u;
   });
 }
-function xhrPut(url, blob, onProg) {
+function xhrPut(url, blob, onProg, reg) {
   return new Promise((res, rej) => {
-    const x = new XMLHttpRequest(); x.open('PUT', url); x.withCredentials = true; x.setRequestHeader('x-requested-with', 'portfolio');
+    const x = new XMLHttpRequest(); if (reg) reg(x); x.onabort = () => rej(Object.assign(new Error('Envio cancelado.'), { cancelled: true })); x.open('PUT', url); x.withCredentials = true; x.setRequestHeader('x-requested-with', 'portfolio');
     x.upload.onprogress = e => e.lengthComputable && onProg(e.loaded);
     x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch (e) {} x.status < 300 ? res(d) : rej(new ApiError(d.error || 'Falha no envio', x.status)); };
     x.onerror = () => rej(new Error('Falha de conexão durante o envio.'));
@@ -358,18 +366,33 @@ function xhrPut(url, blob, onProg) {
 let uploading = 0;
 addEventListener('beforeunload', e => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
 async function sendBlob(blob, name, type, label) {
-  const p = progress(label || 'Enviando ' + name + '…'); uploading++;
+  let cancelled = false, xhr = null, id = null, cancelRej = null, initP = null;
+  const stop = () => Object.assign(new Error('Envio cancelado.'), { cancelled: true });
+  const cancelP = new Promise((_, rej) => { cancelRej = rej; }); cancelP.catch(() => {});
+  const p = progress(label || 'Enviando ' + name + '…', () => { cancelled = true; try { if (xhr) xhr.abort(); } catch (e) {} cancelRej(stop()); }); uploading++;
   try {
-    const init = await api('POST', '/api/media/init', { name, type, size: blob.size });
+    initP = api('POST', '/api/media/init', { name, type, size: blob.size }); initP.catch(() => {});
+    const init = await Promise.race([initP, cancelP]); id = init.id;
     let sent = 0;
     for (let i = 0; i < init.chunks; i++) {
+      if (cancelled) throw stop();
       const part = blob.slice(i * init.chunk, (i + 1) * init.chunk); const base = sent;
-      await xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `${label || 'Enviando ' + name} — ${Math.round((base + loaded) / blob.size * 100)}%`));
+      await Promise.race([cancelP, xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `${label || 'Enviando ' + name} — ${Math.round((base + loaded) / blob.size * 100)}%`), x => { xhr = x; })]);
       sent += part.size;
     }
+    if (cancelled) throw stop();
+    p.lock();
     const done = await api('POST', `/api/media/${init.id}/done`, {});
     p.done(); usage(); return done.src;
-  } catch (e) { p.fail(e.message); e.shown = true; throw e; }
+  } catch (e) {
+    if (cancelled || e.cancelled) {
+      e.cancelled = true; e.shown = true; p.done();
+      if (id) { try { await api('DELETE', '/api/media/' + id); } catch (x) {} }
+      else if (initP) initP.then(i => api('DELETE', '/api/media/' + i.id)).then(usage).catch(() => {});
+      toast('Envio cancelado. O arquivo parcial foi apagado.', '', 3500); usage();
+    } else { p.fail(e.message); e.shown = true; }
+    throw e;
+  }
   finally { uploading--; }
 }
 /* arquivo escolhido -> { src, t, r }. "pre" = imagem já recortada { blob, type, ratio } */
@@ -953,6 +976,56 @@ function aboutEditor(current) {
   });
 }
 
+/* ---------- biblioteca de arquivos ---------- */
+const mb = n => (n / 1048576).toFixed(n < 1048576 * 10 ? 1 : 0) + ' MB';
+function whereUsed() {
+  const m = new Map(); const add = (v, label) => mediaOf(v).forEach(id => { if (!m.has(id)) m.set(id, label); });
+  const addW = (w, l) => { add(w.src, l); (w.images || []).forEach(i => add(i, l)); };
+  add(PF.settings.bg, 'Fundo do site'); add((PF.settings.about || {}).photo, 'Sobre mim');
+  for (const c of PF.clients) { add(c.cover, c.name + ' (capa)'); (c.works || []).forEach(w => addW(w, c.name)); for (const k of c.children || []) (k.works || []).forEach(w => addW(w, c.name + ' › ' + k.name)); }
+  return m;
+}
+function mediaLibrary() {
+  return new Promise(async resolve => {
+    const sh = shell('wide'); const box = sh.box;
+    const h = document.createElement('h3'); h.textContent = 'Arquivos do site'; box.append(h);
+    const info = document.createElement('p'); info.className = 'msg'; box.append(info);
+    const list = document.createElement('div'); list.className = 'ml-list'; box.append(list);
+    const foot = document.createElement('div'); box.append(foot);
+    sh.ent.cancel = () => { sh.close(); resolve(); };
+    const draw = async () => {
+      let files; try { files = (await api('GET', '/api/media')).files; } catch (e) { info.textContent = e.message; return; }
+      const where = whereUsed();
+      for (const f of files) f.used = f.used || where.has(f.id);
+      const free = files.filter(f => !f.used), tot = files.reduce((a, f) => a + f.size, 0), fsz = free.reduce((a, f) => a + f.size, 0);
+      info.textContent = files.length ? `${files.length} arquivo(s), ${mb(tot)} no total. Sem uso: ${free.length} (${mb(fsz)}). Só dá para apagar o que não está em nenhum card.` : 'Nenhum arquivo enviado ainda.';
+      list.innerHTML = '';
+      for (const f of files) {
+        const r = document.createElement('div'); r.className = 'ml-row';
+        const th = document.createElement(f.type.startsWith('video/') ? 'video' : 'img'); th.className = 'ml-th';
+        if (th.tagName === 'VIDEO') { th.muted = true; th.preload = 'metadata'; th.src = '/media/' + f.id + '#t=0.1'; } else { th.loading = 'lazy'; th.src = '/media/' + f.id; }
+        const t = document.createElement('div'); t.className = 'ml-tx';
+        const n = document.createElement('b'); n.textContent = f.name || f.id;
+        const s2 = document.createElement('small'); s2.textContent = `${mb(f.size)} · ${!f.done ? 'envio incompleto' : f.used ? 'em uso: ' + (where.get(f.id) || 'site') : 'sem uso'}`;
+        t.append(n, s2);
+        const b = mkBtn(f.used ? 'Em uso' : '🗑 Apagar', f.used ? '' : 'danger', async () => {
+          if (!await confirmBox('Apagar este arquivo?', `"${f.name || f.id}" (${mb(f.size)}) será apagado de vez e o espaço é liberado.`, 'Apagar')) return;
+          try { await api('DELETE', '/api/media/' + f.id); toast('Arquivo apagado ✓', 'ok', 1800); usage(); draw(); } catch (e) { toast(e.message, 'bad', 5000); }
+        });
+        b.disabled = !!f.used; r.append(th, t, b); list.append(r);
+      }
+      foot.innerHTML = '';
+      if (free.length > 1) { const all = mkBtn(`🗑 Apagar todos sem uso (${free.length} · ${mb(fsz)})`, 'danger', async () => {
+        if (!await confirmBox('Apagar todos sem uso?', `${free.length} arquivo(s), ${mb(fsz)}. Nenhum deles aparece no site.`, 'Apagar tudo')) return;
+        for (const f of free) { try { await api('DELETE', '/api/media/' + f.id); } catch (e) {} }
+        toast('Arquivos apagados ✓', 'ok', 1800); usage(); draw();
+      }); all.style.marginTop = '12px'; foot.append(all); }
+      const cl = mkBtn('Fechar', '', () => { sh.close(); resolve(); }); cl.style.marginTop = '12px'; cl.style.marginLeft = '8px'; foot.append(cl);
+    };
+    draw();
+  });
+}
+
 /* ---------- ações ---------- */
 const infoFields = (it, top) => [
   { key: 'name', label: 'Nome (opcional)', value: it.name, max: 120 },
@@ -1066,6 +1139,7 @@ const actions = {
     const next = { ...PF.settings, theme: r };
     try { const d = await api('PUT', '/api/settings', { settings: next }); PF.settings = d.settings; PF.refresh(); toast('Aparência salva ✓', 'ok', 1800); } catch (e) { toast(e.message, 'bad', 6000); PF.refresh(); }
   },
+  async 'media-lib'() { await mediaLibrary(); },
   async 'edit-about'() {
     let cur = { ...PF.about, blocks: (PF.about.blocks || []).map(b => ({ ...b })) };
     for (let n = 0; n < 5; n++) {
@@ -1229,6 +1303,7 @@ bar.innerHTML = `<span class="dot2"></span><b>Modo administradora</b>
   <button type="button" class="pf-btn" data-act="preview">Ver como visitante</button>
   <button type="button" class="pf-btn" data-act="edit-settings">Ajustes do site</button>
   <button type="button" class="pf-btn" data-act="edit-theme">Aparência</button>
+  <button type="button" class="pf-btn" data-act="media-lib">Arquivos</button>
   <button type="button" class="pf-btn" data-act="password">Senha</button>
   <button type="button" class="pf-btn" data-act="logout">Sair</button>`;
 document.body.append(bar);

@@ -75,11 +75,11 @@ main.wrap{width:100%;flex:1 0 auto}
 .lbl-v{grid-column:1;grid-row:1}.lbl-d{grid-column:1;grid-row:2}
 
 /* sobre mim */
-.sec-head .about-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.about-btn{font-family:var(--ff-abbtn);color:var(--t-abbtn);border:1px solid var(--line);background:rgba(255,243,252,.08);border-radius:99px;padding:8px 18px;font-weight:600;font-size:.95rem;display:inline-flex;align-items:center;gap:8px;transition:background .2s,color .2s,border-color .2s}
-.about-btn::after{content:"▾";font-size:.8em;transition:transform .35s}
-.about-btn[aria-expanded="true"]::after{transform:rotate(180deg)}
-.about-btn:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.about-zone{border-top:1px solid var(--line);padding-top:16px}.about-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}.about-tools:empty{display:none}
+.about-btn{font-family:var(--ff-abbtn);color:var(--t-abbtn);background:none;border:0;border-radius:0;padding:4px 0;font-weight:600;font-size:clamp(1.05rem,2.2vw,1.3rem);display:inline-flex;align-items:center;gap:10px;cursor:pointer;transition:color .2s}
+.about-btn::after{content:"";width:.5em;height:.5em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-.12em) rotate(45deg);transition:transform .35s;opacity:.85}
+.about-btn[aria-expanded="true"]::after{transform:translateY(.1em) rotate(225deg)}
+.about-btn:hover{color:var(--accent-live,var(--accent))}
 .about-btn small{font-weight:400;font-style:italic;opacity:.75;font-size:.72rem}
 .about-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1)}
 .about-wrap.open{grid-template-rows:1fr}
@@ -100,7 +100,7 @@ main.wrap{width:100%;flex:1 0 auto}
 @media (max-width:720px){.about-card{width:100%;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;grid-template-areas:var(--areas-m,'title' 'text')!important}.about-photo{width:min(100%,360px);justify-self:center;align-self:start!important}.h-center .about-photo{width:max(var(--ph-w,34%),min(100%,200px))}}
 
 /* grade */
-.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:20px;border-top:1px solid var(--line);padding-top:20px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:20px;padding-top:8px}
 .sec-head h2{font-family:var(--ff-sec);color:var(--t-sec);font-size:clamp(1.4rem,3vw,2rem);font-weight:700}
 .sec-head span{color:var(--muted);font-size:.9rem}
 .grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:20px}
@@ -219,8 +219,9 @@ body.pf-preview .tile.empty{display:none}
   </section>
 
   <section aria-labelledby="clientes-t">
-    <div class="sec-head"><h2 id="clientes-t">Clientes e projetos</h2><div class="about-tools" id="about-tools"></div></div>
-    <div class="about-wrap" id="about-wrap" role="region" aria-label="Sobre mim" inert><div class="about-in" id="about-in"></div></div>
+    <div class="about-zone"><div class="about-tools" id="about-tools"></div>
+    <div class="about-wrap" id="about-wrap" role="region" aria-label="Sobre mim" inert><div class="about-in" id="about-in"></div></div></div>
+    <div class="sec-head"><h2 id="clientes-t">Clientes e projetos</h2></div>
     <ul class="grid" id="grid"></ul>
   </section>
 </main>
