@@ -89,6 +89,92 @@
    ]
   },
   {
+   "id": "cena",
+   "name": "Cena. Coletivo Criativo",
+   "mono": "CC",
+   "kind": "Logo e identidade visual",
+   "desc": "Logos e identidades visuais criados para os projetos atendidos pelo coletivo.",
+   "children": [
+    {
+     "id": "cena-kristina-daros",
+     "name": "Transista Kristina Daros",
+     "mono": "KD",
+     "ig": "kris_daroos",
+     "kind": "Logo e identidade visual",
+     "desc": "Logo e identidade visual da transista Kristina Daros.",
+     "works": [
+      {
+       "t": "video",
+       "title": "Vídeo 01",
+       "r": "9/16",
+       "src": "videos/kristina-daros-01.mp4"
+      },
+      {
+       "t": "video",
+       "title": "Vídeo 02",
+       "r": "9/16",
+       "src": "videos/kristina-daros-02.mp4"
+      },
+      {
+       "t": "design",
+       "title": "Logo",
+       "r": "1/1"
+      },
+      {
+       "t": "design",
+       "title": "Identidade visual",
+       "r": "4/3"
+      }
+     ]
+    },
+    {
+     "id": "cena-xv-de-novembro",
+     "name": "Escola de Samba XV de Novembro",
+     "mono": "XV",
+     "ig": "academicosxvdenovembro",
+     "kind": "Logo e identidade visual",
+     "desc": "Logo e identidade visual da Escola de Samba XV de Novembro.",
+     "works": [
+      {
+       "t": "video",
+       "title": "Vídeo 01",
+       "r": "16/9",
+       "src": "videos/xv-de-novembro-01.mp4"
+      },
+      {
+       "t": "design",
+       "title": "Logo",
+       "r": "1/1"
+      },
+      {
+       "t": "design",
+       "title": "Identidade visual",
+       "r": "4/3"
+      }
+     ]
+    },
+    {
+     "id": "cena-akacio-camargo",
+     "name": "Espaço Cultural Akácio Camargo",
+     "mono": "AC",
+     "kind": "Logo e identidade visual",
+     "desc": "Logo e identidade visual do Espaço Cultural Akácio Camargo.",
+     "works": [
+      {
+       "t": "design",
+       "title": "Logo",
+       "r": "1/1"
+      },
+      {
+       "t": "design",
+       "title": "Identidade visual",
+       "r": "4/3"
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": "turismo",
    "name": "Curta Caxias",
    "mono": "CX",
@@ -254,92 +340,6 @@
    ]
   },
   {
-   "id": "cena",
-   "name": "Cena. Coletivo Criativo",
-   "mono": "CC",
-   "kind": "Logo e identidade visual",
-   "desc": "Logos e identidades visuais criados para os projetos atendidos pelo coletivo.",
-   "children": [
-    {
-     "id": "cena-kristina-daros",
-     "name": "Transista Kristina Daros",
-     "mono": "KD",
-     "ig": "kris_daroos",
-     "kind": "Logo e identidade visual",
-     "desc": "Logo e identidade visual da transista Kristina Daros.",
-     "works": [
-      {
-       "t": "video",
-       "title": "Vídeo 01",
-       "r": "9/16",
-       "src": "videos/kristina-daros-01.mp4"
-      },
-      {
-       "t": "video",
-       "title": "Vídeo 02",
-       "r": "9/16",
-       "src": "videos/kristina-daros-02.mp4"
-      },
-      {
-       "t": "design",
-       "title": "Logo",
-       "r": "1/1"
-      },
-      {
-       "t": "design",
-       "title": "Identidade visual",
-       "r": "4/3"
-      }
-     ]
-    },
-    {
-     "id": "cena-xv-de-novembro",
-     "name": "Escola de Samba XV de Novembro",
-     "mono": "XV",
-     "ig": "academicosxvdenovembro",
-     "kind": "Logo e identidade visual",
-     "desc": "Logo e identidade visual da Escola de Samba XV de Novembro.",
-     "works": [
-      {
-       "t": "video",
-       "title": "Vídeo 01",
-       "r": "16/9",
-       "src": "videos/xv-de-novembro-01.mp4"
-      },
-      {
-       "t": "design",
-       "title": "Logo",
-       "r": "1/1"
-      },
-      {
-       "t": "design",
-       "title": "Identidade visual",
-       "r": "4/3"
-      }
-     ]
-    },
-    {
-     "id": "cena-akacio-camargo",
-     "name": "Espaço Cultural Akácio Camargo",
-     "mono": "AC",
-     "kind": "Logo e identidade visual",
-     "desc": "Logo e identidade visual do Espaço Cultural Akácio Camargo.",
-     "works": [
-      {
-       "t": "design",
-       "title": "Logo",
-       "r": "1/1"
-      },
-      {
-       "t": "design",
-       "title": "Identidade visual",
-       "r": "4/3"
-      }
-     ]
-    }
-   ]
-  },
-  {
    "id": "fsg",
    "name": "Trabalhos Acadêmicos",
    "mono": "FSG",
@@ -460,5 +460,12 @@
    "text": "schutz534camily@gmail.com",
    "href": "mailto:schutz534camily@gmail.com"
   }
- ]
+ ],
+ "settings": {
+  "bg": "",
+  "heroA": "Ideias em",
+  "heroB": "movimento",
+  "heroC": ".",
+  "tabTitle": "Portfólio de Design e Vídeo"
+ }
 }

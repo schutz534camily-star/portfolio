@@ -24,7 +24,7 @@ body.pf-preview .pf-a{display:none!important}
 .pf-head .pf-btn{font-size:.88rem;padding:9px 16px}
 .art .pf-tile-tools{position:absolute;top:8px;right:8px;display:flex;gap:5px;z-index:3;flex-wrap:wrap;justify-content:flex-end}
 .art .pf-tile-tools .pf-btn{padding:4px 9px;font-size:.7rem}
-.pf-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px);padding:8px 10px 8px 16px;border-radius:99px;background:rgba(20,0,26,.92);border:1px solid var(--line);backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:.82rem}
+.pf-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:max-content;z-index:90;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px);padding:8px 10px 8px 16px;border-radius:99px;background:rgba(20,0,26,.92);border:1px solid var(--line);backdrop-filter:blur(8px);box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:.82rem}
 .pf-bar .dot2{width:9px;height:9px;border-radius:50%;background:#5CFF9D;box-shadow:0 0 0 3px rgba(92,255,157,.25)}
 .pf-bar .meter{display:flex;flex-direction:column;gap:3px;min-width:120px}
 .pf-bar .meter i{display:block;height:5px;border-radius:9px;background:rgba(255,243,252,.18);overflow:hidden}
@@ -48,7 +48,7 @@ body.pf-preview .pf-a{display:none!important}
 .pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
 .pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 body.pf-on .rodape{padding-bottom:96px}.p-in{padding-bottom:150px!important}
-@media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:nowrap}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body.pf-on .rodape{padding-bottom:84px}}
+@media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:wrap;border-radius:20px}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body.pf-on .rodape{padding-bottom:84px}}
 .pf-modal [hidden]{display:none!important}
 .pf-foot-edit{position:absolute;top:-16px;right:14px;z-index:2}
 .pf-modal.wide{width:min(680px,100%)}
@@ -139,11 +139,12 @@ function save() {
 }
 async function reload() {
   const r = await (await fetch('/api/content', { cache: 'no-store' })).json();
-  PF.setClients(r.clients, r.rev, r.footer);
+  PF.setClients(r.clients, r.rev, r.footer, r.settings);
 }
 function allMediaInUse() {
   const used = new Set(); const add = v => mediaOf(v).forEach(x => used.add(x));
   const addW = w => { add(w.src); (w.images || []).forEach(add); };
+  add(PF.settings.bg);
   for (const c of PF.clients) { add(c.cover); (c.works || []).forEach(addW); for (const k of c.children || []) (k.works || []).forEach(addW); }
   return used;
 }
@@ -198,13 +199,13 @@ function modal({ title, message, fields = [], ok = 'Salvar', danger = false, can
         pick.onclick = () => file.click();
         file.onchange = async () => {
           const fl = file.files[0]; file.value = ''; if (!fl) return;
-          const r = await cropFile(fl, { ratio: '16/10', fixed: true, kind: 'card', title: 'Recortar a foto do card' }); if (!r) return;
+          const r = await cropFile(fl, f.crop || { ratio: '16/10', fixed: true, kind: 'card', title: 'Recortar a foto do card' }); if (!r) return;
           el.state = { file: new File([r.blob], fl.name.replace(/\.[^.]+$/, '') + '.jpg', { type: r.type }), remove: false };
           prev.src = URL.createObjectURL(r.blob); shown();
         };
         adj.onclick = async () => {
           const src = el.state.file ? URL.createObjectURL(el.state.file) : (prev.getAttribute('src') || f.value);
-          const r = await cropDialog({ source: src, ratio: '16/10', fixed: true, kind: 'card', title: 'Ajustar o recorte do card' }); if (!r) return;
+          const r = await cropDialog({ source: src, ...(f.crop || { ratio: '16/10', fixed: true, kind: 'card' }), title: 'Ajustar o recorte' }); if (!r) return;
           el.state = { file: new File([r.blob], 'capa.jpg', { type: r.type }), remove: false }; prev.src = URL.createObjectURL(r.blob);
         };
         rm.onclick = () => { el.state = { file: null, remove: true }; prev.hidden = true; rm.hidden = true; adj.hidden = true; pick.textContent = 'Escolher foto'; };
@@ -351,7 +352,7 @@ function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind 
     const zoom = document.createElement('input'); zoom.type = 'range'; zoom.min = 100; zoom.max = 500; zoom.value = 100;
     const ctl = document.createElement('div'); ctl.className = 'crop-ctl'; ctl.append('−', zoom, '+'); box.append(ctl);
     const prev = document.createElement('div'); prev.className = 'crop-prev';
-    const pl = document.createElement('b'); pl.textContent = kind === 'card' ? 'Prévia: como vai aparecer no card da página inicial' : kind === 'carousel' ? 'Prévia: como vai aparecer no carrossel' : 'Prévia: como vai aparecer dentro da galeria'; prev.append(pl);
+    const pl = document.createElement('b'); pl.textContent = kind === 'bg' ? 'Prévia: o fundo do site (o computador mostra uma faixa larga; o celular, uma faixa alta). Um escurecimento é aplicado por cima.' : kind === 'card' ? 'Prévia: como vai aparecer no card da página inicial' : kind === 'carousel' ? 'Prévia: como vai aparecer no carrossel' : 'Prévia: como vai aparecer dentro da galeria'; prev.append(pl);
     const mock = document.createElement('div'); prev.append(mock); box.append(prev);
 
     const base = () => Math.max(W / nw, H / nh);
@@ -697,6 +698,33 @@ const actions = {
       w.src = src; w.r = r.ratio; PF.refresh(); await save(); dropMedia(old);
     } catch (e) {}
   },
+  async 'move-client'(id, _i, d) {
+    const L = PF.clients, k = L.findIndex(c => c.id === id), j = k + d; if (k < 0 || j < 0 || j >= L.length) return;
+    [L[k], L[j]] = [L[j], L[k]]; PF.refresh(); await save();
+  },
+  async 'move-work'(id, i, d) {
+    const it = findItem(id); const L = it && it.works; if (!L || !L[i]) return;
+    const grp = w => w.t === 'video'; let j = i + d;
+    while (j >= 0 && j < L.length && grp(L[j]) !== grp(L[i])) j += d;
+    if (j < 0 || j >= L.length) return;
+    [L[i], L[j]] = [L[j], L[i]]; PF.refresh(); await save();
+  },
+  async 'edit-settings'() {
+    const st = PF.settings;
+    const v = await modal({ title: 'Ajustes do site', ok: 'Salvar', fields: [
+      { key: 'heroA', label: 'Título do topo — parte branca', value: st.heroA, max: 60 },
+      { key: 'heroB', label: 'Título do topo — palavra em destaque (roxa)', value: st.heroB, max: 40 },
+      { key: 'heroC', label: 'Pontuação no fim do título', hint: 'Ex.: um ponto final. Pode deixar vazio.', value: st.heroC, max: 10 },
+      { key: 'tabTitle', label: 'Título da aba do navegador', hint: 'É o nome que aparece na abinha e no Google.', value: st.tabTitle, max: 80 },
+      { key: 'bg', label: 'Imagem de fundo do site', hint: 'Sem escolher nada, usa a foto padrão.', type: 'image', value: st.bg || '', crop: { ratio: '16/9', ratios: [['16/9', 'Computador (16:9)'], ['9/16', 'Celular (9:16)'], ['4/3', '4:3'], ['1/1', 'Quadrado']], kind: 'bg', title: 'Recortar imagem de fundo' } }] }); if (!v) return;
+    const next = { bg: st.bg || '', heroA: v.heroA, heroB: v.heroB, heroC: v.heroC, tabTitle: v.tabTitle };
+    const old = [];
+    try {
+      if (v.bg.remove) { old.push(...mediaOf(st.bg)); next.bg = ''; }
+      else if (v.bg.file) { const up = await upload(v.bg.file); old.push(...mediaOf(st.bg)); next.bg = up.src; }
+    } catch (e) { return; }
+    try { const d = await api('PUT', '/api/settings', { settings: next }); PF.settings = d.settings; PF.refresh(); toast('Ajustes salvos ✓', 'ok', 1800); dropMedia(old); } catch (e) { toast(e.message, 'bad', 6000); }
+  },
   async 'edit-footer'() {
     const r = await footerEditor(PF.footer); if (!r) return;
     try { const d = await api('PUT', '/api/footer', { footer: r }); PF.footer = d.footer; PF.refresh(); toast('Rodapé salvo ✓', 'ok', 1800); } catch (e) { toast(e.message, 'bad', 6000); }
@@ -761,14 +789,14 @@ const actions = {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !actions[b.dataset.act]) return;
   e.preventDefault(); e.stopPropagation();
-  const a = b.dataset.act, id = b.dataset.id, i = b.dataset.i !== undefined ? Number(b.dataset.i) : undefined;
-  actions[a](id, i);
+  const a = b.dataset.act, id = b.dataset.id, i = b.dataset.i !== undefined ? Number(b.dataset.i) : undefined, d = b.dataset.d !== undefined ? Number(b.dataset.d) : undefined;
+  actions[a](id, i, d);
 }, true);
 
 /* ---------- peças injetadas no site ---------- */
 const btn = (act, label, id, extra = '', cls = '') => `<button type="button" class="pf-btn ${cls}" data-act="${act}" data-id="${esc(id || '')}" ${extra}>${label}</button>`;
 window.PF_ADMIN = {
-  card: c => `<div class="pf-a pf-card-tools">${btn('edit-item', '✎ Editar', c.id)}${btn('del-item', '🗑', c.id, 'title="Excluir"', 'danger')}</div>`,
+  card: c => `<div class="pf-a pf-card-tools"><span class="pf-btn pf-grab" draggable="true" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-client', '‹', c.id, 'data-d="-1" title="Mover para antes"')}${btn('move-client', '›', c.id, 'data-d="1" title="Mover para depois"')}${btn('edit-item', '✎ Editar', c.id)}${btn('del-item', '🗑', c.id, 'title="Excluir"', 'danger')}</div>`,
   newCard: () => `<li class="pf-a"><button type="button" class="pf-newcard" data-act="new-client"><b>+</b>Novo cliente</button></li>`,
   head: (item, isSub) => `<div class="pf-a pf-head">
     ${btn('add-files', '+ Foto ou vídeo', item.id, '', 'primary')}
@@ -781,6 +809,7 @@ window.PF_ADMIN = {
     const w = item.works[i] || {}; const car = w.t === 'carousel';
     const crop = !car && w.t !== 'video' && w.src && !w.canva;
     return `<div class="pf-a pf-tile-tools">
+    ${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
     ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}
     ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
@@ -789,11 +818,24 @@ window.PF_ADMIN = {
   footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`
 };
 
+/* arrastar e soltar os cards da página inicial */
+const gridEl = document.getElementById('grid');
+gridEl.addEventListener('dragstart', e => { const h = e.target.closest && e.target.closest('.pf-grab'); const li = h && h.closest('li[data-cid]'); if (!li) return; e.dataTransfer.setData('text/plain', li.dataset.cid); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setDragImage(li, 40, 40); } catch (x) {} li.style.opacity = '.4'; });
+gridEl.addEventListener('dragend', e => { const li = e.target.closest('li'); if (li) li.style.opacity = ''; gridEl.querySelectorAll('li').forEach(x => x.style.outline = ''); });
+gridEl.addEventListener('dragover', e => { const li = e.target.closest('li[data-cid]'); if (!li) return; e.preventDefault(); gridEl.querySelectorAll('li').forEach(x => x.style.outline = ''); li.style.outline = '3px solid var(--accent)'; });
+gridEl.addEventListener('drop', async e => {
+  const li = e.target.closest('li[data-cid]'); if (!li) return; e.preventDefault();
+  const from = e.dataTransfer.getData('text/plain'), to = li.dataset.cid; if (!from || from === to) return;
+  const L = PF.clients, a = L.findIndex(c => c.id === from), b = L.findIndex(c => c.id === to); if (a < 0 || b < 0) return;
+  const [m] = L.splice(a, 1); L.splice(b, 0, m); PF.refresh(); await save();
+});
+
 /* ---------- barra do administrador ---------- */
 const bar = document.createElement('div'); bar.className = 'pf-bar';
 bar.innerHTML = `<span class="dot2"></span><b>Modo administradora</b>
   <span class="meter"><i><b id="pf-m"></b></i><span id="pf-t">Calculando espaço…</span></span>
   <button type="button" class="pf-btn" data-act="preview">Ver como visitante</button>
+  <button type="button" class="pf-btn" data-act="edit-settings">Ajustes do site</button>
   <button type="button" class="pf-btn" data-act="password">Senha</button>
   <button type="button" class="pf-btn" data-act="logout">Sair</button>`;
 document.body.append(bar);

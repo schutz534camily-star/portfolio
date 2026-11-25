@@ -154,23 +154,42 @@ function cleanFooter(arr) {
   });
 }
 
+/* ---------- ajustes do site ---------- */
+const DEFAULT_SETTINGS = { bg: '', heroA: 'Ideias em', heroB: 'movimento', heroC: '.', tabTitle: 'Portfólio de Design e Vídeo' };
+function cleanSettings(o) {
+  if (!o || typeof o !== 'object') throw new Error('ajustes inválidos');
+  const bg = typeof o.bg === 'string' ? o.bg : '';
+  if (bg && !okSrc(bg)) throw new Error('imagem de fundo inválida');
+  return { bg, heroA: str(o.heroA, 60), heroB: str(o.heroB, 40), heroC: str(o.heroC, 10), tabTitle: str(o.tabTitle, 80) };
+}
+
 /* ---------- conteúdo ---------- */
 async function loadSeed(env) {
   return (await env.ASSETS.fetch(new Request('https://assets.local/seed.json'))).json();
 }
+const videoCount = c => [...(c.works || []), ...(c.children || []).flatMap(k => k.works || [])].filter(w => w.t === 'video').length;
 async function loadContent(env) {
-  const row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
+  let row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
   const f = await env.DB.prepare("SELECT value FROM docs WHERE key = 'footer'").first();
-  let footer = f ? JSON.parse(f.value) : null;
-  if (row) {
-    if (!footer) footer = cleanFooter((await loadSeed(env)).footer);
-    return { clients: JSON.parse(row.value), rev: row.rev, footer };
+  const st = await env.DB.prepare("SELECT value FROM docs WHERE key = 'settings'").first();
+  let seed = null;
+  const getSeed = async () => seed || (seed = await loadSeed(env));
+  if (!row) {
+    const sd = await getSeed();
+    const clients = cleanContent(sd.clients);
+    await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('content', ?, 1, ?)").bind(JSON.stringify(clients), now()).run();
+    await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('migr_order', '1', 1, ?)").bind(now()).run();
+    row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
+  } else if (!(await env.DB.prepare("SELECT 1 x FROM docs WHERE key = 'migr_order'").first())) {
+    // uma vez só: a ordem antes era "mais vídeos primeiro"; agora a ordem é a que ela escolher
+    const cur = JSON.parse(row.value).map((c, i) => ({ c, i })).sort((a, b) => videoCount(b.c) - videoCount(a.c) || a.i - b.i).map(x => x.c);
+    await env.DB.prepare("UPDATE docs SET value = ?, rev = rev + 1, updated = ? WHERE key = 'content' AND rev = ?").bind(JSON.stringify(cur), now(), row.rev).run();
+    await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('migr_order', '1', 1, ?)").bind(now()).run();
+    row = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
   }
-  const seed = await loadSeed(env);
-  const clients = cleanContent(seed.clients);
-  await env.DB.prepare("INSERT OR IGNORE INTO docs (key, value, rev, updated) VALUES ('content', ?, 1, ?)").bind(JSON.stringify(clients), now()).run();
-  const again = await env.DB.prepare("SELECT value, rev FROM docs WHERE key = 'content'").first();
-  return { clients: JSON.parse(again.value), rev: again.rev, footer: footer || cleanFooter(seed.footer) };
+  const footer = f ? JSON.parse(f.value) : cleanFooter((await getSeed()).footer);
+  const settings = st ? JSON.parse(st.value) : { ...DEFAULT_SETTINGS, ...((await getSeed()).settings || {}) };
+  return { clients: JSON.parse(row.value), rev: row.rev, footer, settings };
 }
 
 async function deleteMedia(env, id) {
@@ -237,8 +256,8 @@ export default {
 
       /* públicas */
       if (path === '/api/content' && method === 'GET') {
-        const { clients, rev, footer } = await loadContent(env);
-        return json({ clients, rev, footer }, 200, { 'cache-control': 'no-cache' });
+        const { clients, rev, footer, settings } = await loadContent(env);
+        return json({ clients, rev, footer, settings }, 200, { 'cache-control': 'no-cache' });
       }
       if (path === '/api/me' && method === 'GET') {
         const u = await currentUser(req, env);
@@ -318,6 +337,8 @@ export default {
         await env.DB.prepare('DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY id DESC LIMIT 30)').run();
         // limpeza: apaga arquivos enviados que não aparecem mais em lugar nenhum (com 2h de folga para uploads em andamento)
         const used = mediaIds(clients);
+        const stRow = await env.DB.prepare("SELECT value FROM docs WHERE key = 'settings'").first();
+        if (stRow) { const m = /^\/media\/([a-f0-9]{16})$/.exec(JSON.parse(stRow.value).bg || ''); if (m) used.add(m[1]); }
         const all = await env.DB.prepare('SELECT id, created FROM media').all();
         for (const m of all.results) if (!used.has(m.id) && m.created < t - 7200) await deleteMedia(env, m.id);
         return json({ ok: true, rev: cur.rev + 1 });
@@ -328,6 +349,13 @@ export default {
         let footer; try { footer = cleanFooter(body.footer); } catch (e) { return fail(400, e.message); }
         await env.DB.prepare("INSERT INTO docs (key, value, rev, updated) VALUES ('footer', ?, 1, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated = excluded.updated").bind(JSON.stringify(footer), now()).run();
         return json({ ok: true, footer });
+      }
+
+      if (path === '/api/settings' && method === 'PUT') {
+        const body = await req.json().catch(() => ({}));
+        let settings; try { settings = cleanSettings(body.settings); } catch (e) { return fail(400, e.message); }
+        await env.DB.prepare("INSERT INTO docs (key, value, rev, updated) VALUES ('settings', ?, 1, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated = excluded.updated").bind(JSON.stringify(settings), now()).run();
+        return json({ ok: true, settings });
       }
 
       if (path === '/api/usage' && method === 'GET') {

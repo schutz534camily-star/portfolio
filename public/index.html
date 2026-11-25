@@ -137,6 +137,8 @@ main.wrap{width:100%;flex:1 0 auto}
 
 
 /* carrossel */
+.onlyme{opacity:.75;font-style:italic;font-size:.72rem}
+body.pf-preview .tile.empty{display:none}
 .carcover{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:none;cursor:zoom-in}
 .carcover img{width:100%;height:100%;object-fit:cover;display:block}
 .carbadge{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:5px;background:rgba(20,0,26,.78);color:var(--ink);border-radius:99px;padding:4px 10px;font-size:.75rem;font-weight:600}
@@ -175,7 +177,7 @@ main.wrap{width:100%;flex:1 0 auto}
 <body>
 <main class="wrap" id="main">
   <section class="hero">
-    <h1>Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1>
+    <h1 id="hero-t">Ideias em <span class="mov">movimento</span><span class="ponto">.</span></h1>
     <div class="linha">
       <img class="assinatura" src="assinatura.png" alt="Assinatura de Camily Schütz">
     </div>
@@ -213,19 +215,21 @@ main.wrap{width:100%;flex:1 0 auto}
 <script>
 /* ===== CONTEÚDO =====
    Vem do servidor (/api/content). Se o servidor estiver fora do ar, usa seed.json. */
-let CLIENTS = [], REV = 0, ORDER = [];
+let CLIENTS = [], REV = 0, ORDER = [], SETTINGS = { bg:'', heroA:'Ideias em', heroB:'movimento', heroC:'.', tabTitle:'Portfólio de Design e Vídeo' };
 
 /* ===== AUXILIARES ===== */
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const worksOf = c => [...(c.works||[]), ...(c.children||[]).flatMap(k => k.works||[])];
+const real = w => !!(w.src || w.canva || (w.images && w.images.length));
+const vis = ws => (window.PF_ADMIN ? ws : ws.filter(real));
+const worksOf = c => [...vis(c.works||[]), ...(c.children||[]).flatMap(k => vis(k.works||[]))];
 const nVid = c => worksOf(c).filter(w => w.t==='video').length;
 const nDes = c => worksOf(c).filter(w => w.t!=='video').length;
 const plural = (n,s,p) => n + ' ' + (n===1 ? s : p);
 
 /* vídeos sempre primeiro: ordem estável por quantidade de vídeos */
-function computeOrder(){ ORDER = CLIENTS.map((c,i)=>({c,i})).sort((a,b)=> nVid(b.c)-nVid(a.c) || a.i-b.i).map(x=>x.c); }
+function computeOrder(){ ORDER = CLIENTS.slice(); }
 
 function chipsHTML(c){
   const v = nVid(c), d = nDes(c), k = (c.children||[]).length;
@@ -244,6 +248,13 @@ const ICONS = {
   link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'
 };
 let FOOTER = [];
+function applySettings(){
+  const st = SETTINGS;
+  $('#hero-t').innerHTML = `${esc(st.heroA||'')} <span class="mov">${esc(st.heroB||'')}</span><span class="ponto">${esc(st.heroC||'')}</span>`;
+  document.title = st.tabTitle || 'Portfólio';
+  const img = st.bg || 'fundo.jpg';
+  document.documentElement.style.setProperty('--foto', `linear-gradient(rgba(43,0,52,.80),rgba(43,0,52,.80)),url(${img}) center 25%/cover no-repeat`);
+}
 function footerHTML(){
   const items = FOOTER.map(i => {
     const svg = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i.icon] || ICONS.link}</svg>`;
@@ -261,7 +272,7 @@ const grid = $('#grid');
 const AD = () => window.PF_ADMIN || null;
 function renderGrid(){
   grid.innerHTML = ORDER.map((c,i) => `
-  <li style="--i:${i}">
+  <li style="--i:${i}" data-cid="${c.id}">
     <button class="card" type="button" data-id="${c.id}" aria-label="Abrir ${esc(c.name||'projeto')}">
       <div class="thumb" style="--a:${120+i*37}deg;--x:${(i*23)%80+10}%${c.cover?`;background:url(${c.cover}) center/cover no-repeat`:''}">
       </div>
@@ -300,11 +311,11 @@ function tileHTML(w, i){
     art = video ? `<video src="${esc(w.src)}#t=0.1" controls playsinline preload="metadata"></video>`
                 : `<img src="${esc(w.src)}" alt="${esc(w.title)}" loading="lazy">`;
   } else if(video){
-    art = `<div class="ph"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Seu vídeo aqui</span></div>`;
+    art = `<div class="ph"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Seu vídeo aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
   } else {
-    art = `<div class="ph"><span class="frame"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8C3F2" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="M3 17l5-5 4 4 3-3 4 4"/></svg></span><span>Seu trabalho aqui</span></div>`;
+    art = `<div class="ph"><span class="frame"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#E8C3F2" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="M3 17l5-5 4 4 3-3 4 4"/></svg></span><span>Seu trabalho aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
   }
-  return `<figure class="tile${wide}" data-wi="${curItem.works.indexOf(w)}" style="--i:${i};--r:${w.r||'16/9'}">
+  return `<figure class="tile${wide}${real(w)?'':' empty'}" data-wi="${curItem.works.indexOf(w)}" style="--i:${i};--r:${w.r||'16/9'}">
     <div class="art">${art}${AD()?AD().tile(curItem, curItem.works.indexOf(w)):''}</div>
     ${w.title?`<figcaption class="cap">${video?'':'<span class="tag">DESIGN</span>'}<b>${esc(w.title)}</b></figcaption>`:''}
   </figure>`;
@@ -320,7 +331,7 @@ let curItem = null;
 function render(c, k){
   const item = k || c;
   curItem = item;
-  const works = item.works || [];
+  const works = vis(item.works || []);
   const vids = works.filter(w => w.t==='video');
   const others = works.filter(w => w.t!=='video');
   crumbs.innerHTML = `<button type="button" data-go="">Portfólio</button><span aria-hidden="true">›</span>` +
@@ -463,11 +474,12 @@ pbody.addEventListener('click', e => {
 window.PF = {
   openCarousel,
   get clients(){ return CLIENTS; }, get rev(){ return REV; }, set rev(v){ REV = v; },
-  setClients(list, rev, footer){ CLIENTS = list; if(rev!=null) REV = rev; if(footer) FOOTER = footer; this.refresh(); },
+  setClients(list, rev, footer, settings){ CLIENTS = list; if(rev!=null) REV = rev; if(footer) FOOTER = footer; if(settings) SETTINGS = settings; this.refresh(); },
+  get settings(){ return SETTINGS; }, set settings(v){ SETTINGS = v; },
   get footer(){ return FOOTER; }, set footer(v){ FOOTER = v; },
   get key(){ return currentKey; }, lookup, go, esc,
   refresh(){
-    computeOrder(); renderGrid(); renderFooter();
+    computeOrder(); renderGrid(); renderFooter(); applySettings();
     if(!overlay.hidden){
       const hit = lookup(currentKey || '');
       if(hit){ currentClient = hit.c; render(hit.c, hit.k); } else go('');
@@ -478,9 +490,9 @@ window.PF = {
 (async function boot(){
   let data = null;
   try{ const r = await fetch('/api/content'); if(r.ok) data = await r.json(); }catch(e){}
-  if(!data){ try{ const sd = await (await fetch('seed.json')).json(); data = { clients: sd.clients, footer: sd.footer, rev: 0 }; }catch(e){ data = { clients: [], footer: [], rev: 0 }; } }
-  CLIENTS = data.clients; REV = data.rev; FOOTER = data.footer || [];
-  computeOrder(); renderGrid(); renderFooter(); route();
+  if(!data){ try{ const sd = await (await fetch('seed.json')).json(); data = { clients: sd.clients, footer: sd.footer, settings: sd.settings, rev: 0 }; }catch(e){ data = { clients: [], footer: [], rev: 0 }; } }
+  CLIENTS = data.clients; REV = data.rev; FOOTER = data.footer || []; if(data.settings) SETTINGS = data.settings;
+  computeOrder(); renderGrid(); renderFooter(); applySettings(); route();
   try{
     const me = await (await fetch('/api/me')).json();
     if(me.admin){ const sc = document.createElement('script'); sc.src = '/api/admin-ui.js'; document.head.append(sc); }
