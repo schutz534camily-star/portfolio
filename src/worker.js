@@ -104,7 +104,6 @@ function cleanWork(w) {
   if (typeof w.g === 'string' && /^[a-z0-9]{1,12}$/.test(w.g)) out.g = w.g;
   if (t === 'carousel') {
     if (!Array.isArray(w.images)) throw new Error('carrossel inválido');
-    if (w.images.length > 200) throw new Error('Carrossel com fotos demais (máximo 200).');
     if (!w.images.every(okSrc)) throw new Error('arquivo inválido no carrossel');
     out.images = w.images;
     return out;
@@ -128,7 +127,6 @@ function cleanItem(c, nested) {
   if (!nested && c.cover) { if (!SRC_OK.test(c.cover) || c.cover.includes('..')) throw new Error('capa inválida'); out.cover = c.cover; }
   const sv = str(c.secV, 60), sd = str(c.secD, 60); if (sv) out.secV = sv; if (sd) out.secD = sd;
   if (Array.isArray(c.groups)) {
-    if (c.groups.length > 12) throw new Error('categorias demais');
     const seen = new Set();
     out.groups = c.groups.map(g => {
       const id = g && typeof g.id === 'string' ? g.id : '';
@@ -136,12 +134,12 @@ function cleanItem(c, nested) {
       return { id, name: str(g.name, 60) };
     });
   }
-  if (Array.isArray(c.works)) { if (c.works.length > 300) throw new Error('trabalhos demais'); out.works = c.works.map(cleanWork); }
-  if (!nested && Array.isArray(c.children)) { if (c.children.length > 60) throw new Error('projetos demais'); out.children = c.children.map(k => cleanItem(k, true)); }
+  if (Array.isArray(c.works)) { out.works = c.works.map(cleanWork); }
+  if (!nested && Array.isArray(c.children)) { out.children = c.children.map(k => cleanItem(k, true)); }
   return out;
 }
 function cleanContent(arr) {
-  if (!Array.isArray(arr) || arr.length > 80) throw new Error('conteúdo inválido');
+  if (!Array.isArray(arr)) throw new Error('conteúdo inválido');
   const clients = arr.map(c => cleanItem(c, false));
   const ids = new Set();
   for (const c of clients) for (const x of [c, ...(c.children || [])]) { if (ids.has(x.id)) throw new Error('identificador repetido'); ids.add(x.id); }
@@ -158,7 +156,7 @@ const mediaIds = clients => {
 /* ---------- rodapé ---------- */
 const ICONS = new Set(['user', 'instagram', 'whatsapp', 'mail', 'phone', 'link']);
 function cleanFooter(arr) {
-  if (!Array.isArray(arr) || arr.length > 12) throw new Error('rodapé inválido');
+  if (!Array.isArray(arr)) throw new Error('rodapé inválido');
   return arr.map(i => {
     if (!i || typeof i !== 'object') throw new Error('item do rodapé inválido');
     const out = { icon: ICONS.has(i.icon) ? i.icon : 'link', text: str(i.text, 80) };
@@ -199,7 +197,6 @@ function cleanAbout(a) {
   const photo = typeof a.photo === 'string' ? a.photo : '';
   if (photo && !okSrc(photo)) throw new Error('foto do Sobre mim inválida');
   const blocks = Array.isArray(a.blocks) ? a.blocks : [];
-  if (blocks.length > 12) throw new Error('blocos demais no Sobre mim');
   return {
     label: str(a.label, 30) || d.label, title: str(a.title, 120),
     blocks: blocks.map(b => ({ title: str(b && b.title, 120), text: str(b && b.text, 4000) })).filter(b => b.title || b.text),
@@ -423,6 +420,7 @@ const handle = async (req, env) => {
         if (raw.length > 2_000_000) return fail(413, 'Conteúdo grande demais.');
         let body; try { body = JSON.parse(raw); } catch { return fail(400, 'JSON inválido.'); }
         let clients; try { clients = cleanContent(body.clients); } catch (e) { return fail(400, e.message); }
+        if (JSON.stringify(clients).length > 1900000) return fail(413, 'O site chegou no limite técnico do banco de dados (cerca de 2 MB de textos e links). Apague trabalhos que não usa mais.');
         const cur = await loadContent(env);
         if (Number(body.rev) !== cur.rev) return fail(409, 'O site foi alterado em outro lugar. Recarregue a página.', { rev: cur.rev });
         const t = now();
