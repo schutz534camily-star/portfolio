@@ -240,7 +240,23 @@ function nearestRatio(w, h) {
   for (const [r] of RATIOS) { const [a, b] = r.split('/').map(Number); const x = Math.abs(Math.log(q / (a / b))); if (x < d) { d = x; best = r; } }
   return best;
 }
+/* GIF: garante que roda em loop infinito (acrescenta/ajusta o bloco NETSCAPE2.0) */
+async function gifLoop(file) {
+  const b = new Uint8Array(await file.arrayBuffer());
+  if (b.length < 14 || String.fromCharCode(...b.slice(0, 3)) !== 'GIF') return file;
+  let p = 13; if (b[10] & 0x80) p += 3 * (1 << ((b[10] & 7) + 1));
+  for (let q = p; q + 18 < b.length && b[q] === 0x21;) {
+    if (b[q + 1] === 0xFF && b[q + 2] === 0x0B && String.fromCharCode(...b.slice(q + 3, q + 14)) === 'NETSCAPE2.0') {
+      b[q + 16] = 0; b[q + 17] = 0; return new File([b], file.name, { type: 'image/gif' });
+    }
+    if (b[q + 1] === 0xF9 || b[q + 1] === 0xFE || b[q + 1] === 0x01 || b[q + 1] === 0xFF) { q += 2; while (q < b.length && b[q] !== 0) q += b[q] + 1; q++; } else break;
+  }
+  const ext = new Uint8Array([0x21, 0xFF, 0x0B, ...'NETSCAPE2.0'.split('').map(c => c.charCodeAt(0)), 0x03, 0x01, 0x00, 0x00, 0x00]);
+  const out = new Uint8Array(b.length + ext.length); out.set(b.slice(0, p)); out.set(ext, p); out.set(b.slice(p), p + ext.length);
+  return new File([out], file.name, { type: 'image/gif' });
+}
 async function prepareImage(file) {
+  if (file.type === 'image/gif') file = await gifLoop(file);
   const bmp = await createImageBitmap(file).catch(() => null);
   if (!bmp) throw new Error('Não consegui abrir a imagem "' + file.name + '".');
   const w = bmp.width, h = bmp.height, scale = Math.min(1, 1800 / Math.max(w, h));
@@ -565,7 +581,7 @@ function carouselEditor(work) {
         for (const s of slides) {
           if (!need(s)) { images.push(s.src); continue; }
           n++; const label = `Enviando foto ${n} de ${total}`;
-          if (s.gif && s.file && !s.blob) { images.push(await sendBlob(s.file, s.file.name, 'image/gif', label)); continue; }
+          if (s.gif && s.file && !s.blob) { images.push(await sendBlob(await gifLoop(s.file), s.file.name, 'image/gif', label)); continue; }
           const pre = s.blob || await autoCrop(s.file || s.src, ratio);
           images.push(await sendBlob(pre.blob, 'carrossel.jpg', pre.type, label));
         }
