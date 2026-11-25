@@ -438,7 +438,7 @@ function tileHTML(w, i, tag = true){
   } else if(w.canva){
     art = `<a class="ph open" href="${esc(w.canva)}" target="_blank" rel="noopener noreferrer"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Abrir apresentação no Canva ↗</span></a>`;
   } else if(w.src){
-    art = video ? (w.poster ? `<video src="${esc(w.src)}" poster="${esc(w.poster)}" controls playsinline preload="none"></video>` : `<video src="${esc(w.src)}#t=0.1" controls playsinline preload="metadata"></video>`)
+    art = video ? (w.poster ? `<video src="${esc(w.src)}${w.posterT?'#t='+w.posterT:''}" poster="${esc(w.poster)}"${w.posterT?` data-pt="1" data-ptt="${w.posterT}"`:''} controls playsinline preload="metadata"></video>` : `<video src="${esc(w.src)}#t=0.1" controls playsinline preload="metadata"></video>`)
                 : `<img class="zoomable" data-zoom src="${esc(w.src)}" alt="${esc(w.title)}" loading="lazy" tabindex="0" role="button" aria-label="Ampliar imagem">`;
   } else if(video){
     art = `<div class="ph"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Seu vídeo aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
@@ -601,6 +601,9 @@ addEventListener('pointerup', e => {
   if(swX===null) return; const dx = e.clientX - swX; swX = null;
   if(Math.abs(dx) > 45) lbShow(lbI + (dx < 0 ? 1 : -1));
 });
+/* vídeo com capa escolhida: a capa é o frame #t; ao dar play sem ter mexido na barra, começa do início */
+pbody.addEventListener('seeked', e => { const v = e.target; if(v.dataset && v.dataset.pt && Math.abs(v.currentTime - Number(v.dataset.ptt)) > 0.6) delete v.dataset.pt; }, true);
+pbody.addEventListener('play', e => { const v = e.target; if(v.dataset && v.dataset.pt){ delete v.dataset.pt; try{ v.currentTime = 0; }catch(_){} } }, true);
 function zoomImg(img){
   const f = img.closest('[data-wi]'); if(!f || !curItem) return;
   const w = curItem.works[Number(f.dataset.wi)]; if(!w || !w.src) return;

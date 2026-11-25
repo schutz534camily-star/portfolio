@@ -110,7 +110,7 @@ function cleanWork(w) {
     return out;
   }
   if (w.src) { if (!okSrc(w.src)) throw new Error('arquivo inválido'); out.src = w.src; }
-  if (w.poster && t === 'video' && w.src) { if (!okSrc(w.poster)) throw new Error('capa inválida'); out.poster = w.poster; }
+  if (w.poster && t === 'video' && w.src) { if (!okSrc(w.poster)) throw new Error('capa inválida'); out.poster = w.poster; const pt = Number(w.posterT); if (Number.isFinite(pt) && pt > 0 && pt < 86400) out.posterT = Math.round(pt * 100) / 100; }
   if (w.canva) {
     let u; try { u = new URL(w.canva); } catch { throw new Error('link do Canva inválido'); }
     if (u.protocol !== 'https:') throw new Error('link do Canva inválido');
@@ -307,6 +307,21 @@ async function serveMedia(req, env, id) {
   return new Response(readable, { status, headers });
 }
 
+/* vídeos que já vêm no projeto (pasta /videos): garante Range para dar para avançar o vídeo */
+async function serveStaticRange(req, env) {
+  const res = await env.ASSETS.fetch(new Request(new URL(req.url).href));
+  if (res.status !== 200) return res;
+  const buf = await res.arrayBuffer(); const size = buf.byteLength;
+  const h = new Headers(res.headers); h.set('accept-ranges', 'bytes');
+  const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('range') || '');
+  if (!rg || (!rg[1] && !rg[2])) { h.set('content-length', String(size)); return new Response(req.method === 'HEAD' ? null : buf, { status: 200, headers: h }); }
+  let start, end = size - 1;
+  if (rg[1] === '') start = Math.max(size - Number(rg[2]), 0); else { start = Number(rg[1]); if (rg[2]) end = Math.min(Number(rg[2]), size - 1); }
+  if (start > end || start >= size) return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+  h.set('content-range', `bytes ${start}-${end}/${size}`); h.set('content-length', String(end - start + 1));
+  return new Response(req.method === 'HEAD' ? null : buf.slice(start, end + 1), { status: 206, headers: h });
+}
+
 /* ---------- roteador ---------- */
 const SEC = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'" };
 const withSec = (res) => { try { const r = new Response(res.body, res); for (const k in SEC) if (!r.headers.has(k)) r.headers.set(k, SEC[k]); return r; } catch { return res; } };
@@ -327,6 +342,7 @@ const handle = async (req, env) => {
         return serveMedia(req, env, path.slice(7).split('/')[0]);
       }
       if (path === '/seed.json') return new Response('Não encontrado', { status: 404 });
+      if (path.startsWith('/videos/') && req.headers.get('range')) return serveStaticRange(req, env);
       if (!path.startsWith('/api/')) return env.ASSETS.fetch(req);
 
       const ip = req.headers.get('cf-connecting-ip') || 'local';

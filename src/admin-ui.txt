@@ -49,6 +49,14 @@ body.pf-preview .pf-a{display:none!important}
 .pf-toast .pbar{height:5px;border-radius:9px;background:rgba(255,243,252,.18);margin-top:7px;overflow:hidden}
 .pf-toast .pbar b{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 body.pf-on .rodape{padding-bottom:96px}
+.pf-chk{display:none;position:absolute;top:10px;left:10px;z-index:6;width:30px;height:30px;border-radius:8px;background:rgba(20,0,26,.85);border:1px solid var(--line);align-items:center;justify-content:center;cursor:pointer}
+body.pf-sel .pf-chk{display:flex}
+.pf-chk input{width:20px;height:20px;accent-color:#FFC94A;cursor:pointer;margin:0}
+body.pf-sel .pf-card-tools,body.pf-sel .pf-tile-tools,body.pf-sel .pf-sub-tools{display:none!important}
+body.pf-sel li[data-cid]:has(.pf-chk input:checked) .card,body.pf-sel .subw:has(.pf-chk input:checked) .sub,body.pf-sel .tile:has(.pf-chk input:checked) .art{outline:3px solid #FFC94A;outline-offset:2px}
+body.pf-sel .tile .art,body.pf-sel .card,body.pf-sel .sub{cursor:pointer}
+body.pf-sel .tile video{pointer-events:none}
+.pf-bar .pf-sel-only{display:none}body.pf-sel .pf-bar .pf-sel-only{display:inline-flex}
 .pf-sub-tools{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:3}.pf-sub-tools .pf-btn{padding:3px 8px;font-size:.72rem}.p-in{padding-bottom:150px!important}
 @media (max-width:600px){.pf-bar{bottom:10px;padding:6px 8px;gap:6px;flex-wrap:wrap;border-radius:20px}.pf-bar>b,.pf-bar .dot2,.pf-bar .meter{display:none}.pf-bar .pf-btn{padding:7px 10px;font-size:.74rem}.pf-toasts{bottom:70px}body.pf-on .rodape{padding-bottom:84px}}
 .pf-modal [hidden]{display:none!important}
@@ -457,7 +465,7 @@ function posterPicker(w) {
       if (!v.videoWidth) { err.textContent = 'O vídeo ainda não carregou.'; return; }
       v.pause(); const k = Math.min(1, 1280 / v.videoWidth); const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
       try { c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); } catch (e) { err.textContent = 'Não consegui capturar este frame.'; return; }
-      c.toBlob(b => { if (!b) { err.textContent = 'Não consegui capturar este frame.'; return; } done({ blob: b }); }, 'image/jpeg', 0.86);
+      c.toBlob(b => { if (!b) { err.textContent = 'Não consegui capturar este frame.'; return; } done({ blob: b, t: v.currentTime }); }, 'image/jpeg', 0.86);
     });
     const auto = mkBtn('Voltar à capa automática', '', () => done({ blob: null })); auto.disabled = !w.poster; if (!w.poster) auto.style.opacity = .35;
     const rw = row(auto, mkBtn('Cancelar', '', () => done(null)), use); rw.style.justifyContent = 'space-between'; box.append(rw);
@@ -1150,7 +1158,7 @@ const actions = {
     try {
       let src = ''; if (r.blob) src = await sendBlob(r.blob, 'capa.jpg', 'image/jpeg', 'Enviando capa…');
       const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2 || w2.src !== w.src) throw new Error('Não achei o vídeo. Atualize a página e tente de novo.');
-      const old = mediaOf(w2.poster); if (src) w2.poster = src; else delete w2.poster;
+      const old = mediaOf(w2.poster); if (src) { w2.poster = src; w2.posterT = Math.round(r.t * 100) / 100; } else { delete w2.poster; delete w2.posterT; }
       PF.refresh(); await save(); dropMedia(old);
     } catch (e) { if (!e.shown && !(e instanceof ApiError) && !e.cancelled) toast(e.message || 'Erro ao trocar a capa.', 'bad', 7000); }
   },
@@ -1258,7 +1266,7 @@ const actions = {
       if (f.type.startsWith('image/')) { pre = await cropFile(f, { ratio: w.r || '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto' }); if (!pre) return; }
       const up = await upload(f, pre); if (pre) up.t = 'design'; const old = [...mediaOf(w.src), ...mediaOf(w.poster)];
       const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2) throw new Error('Não achei o trabalho para trocar. Atualize a página e tente de novo.');
-      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva; delete w2.poster;
+      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva; delete w2.poster; delete w2.posterT;
       PF.refresh(); await save(); dropMedia(old);
     } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao trocar.', 'bad', 7000); }
   },
@@ -1300,6 +1308,39 @@ const actions = {
       { key: 'next', label: 'Nova senha', hint: 'Mínimo de 10 caracteres.', type: 'password', required: true }] }); if (!v) return;
     try { await api('POST', '/api/password', v); toast('Senha trocada ✓', 'ok'); } catch (e) { toast(e.message, 'bad', 6000); }
   },
+  'sel-toggle'() {
+    const on = document.body.classList.toggle('pf-sel'); SEL = new Set(); SELCTX = PF.key;
+    document.querySelector('[data-act=sel-toggle]').textContent = on ? 'Cancelar seleção' : 'Selecionar vários'; updSel();
+  },
+  'sel-all'() {
+    const S = selSet(); const all = [...document.querySelectorAll('.pf-chk input[data-sel]')];
+    const every = all.length && all.every(c => S.has(c.dataset.sel));
+    all.forEach(c => { if (every) S.delete(c.dataset.sel); else S.add(c.dataset.sel); }); updSel();
+  },
+  async 'sel-del'() {
+    const S = selSet(); if (!S.size) return;
+    const clients = [], subs = [], works = [];
+    for (const k of S) {
+      const [t, a, b] = k.split(':');
+      if (t === 'w') { const it = findItem(a); const w = it && it.works[Number(b)]; if (w) works.push({ it, w }); }
+      else { const it = findItem(a + (b ? ':' + b : '')); if (it) (t === 'c' ? clients : subs).push(it); }
+    }
+    const nw = works.length, nc = clients.length, ns = subs.length;
+    if (!nw && !nc && !ns) return;
+    const inner = clients.reduce((a, c) => a + (c.works || []).length + (c.children || []).reduce((x, k) => x + (k.works || []).length, 0), 0) + subs.reduce((a, k) => a + (k.works || []).length, 0);
+    const parts = []; if (nc) parts.push(nc + ' card' + (nc > 1 ? 's' : '')); if (ns) parts.push(ns + ' projeto' + (ns > 1 ? 's' : '')); if (nw) parts.push(nw + ' trabalho' + (nw > 1 ? 's' : ''));
+    if (!await confirmBox('Excluir ' + parts.join(', ') + '?', (inner ? `Isso também apaga ${inner} trabalho(s) que estão dentro. ` : '') + 'Os arquivos enviados são apagados. Não dá para desfazer.', 'Excluir tudo')) return;
+    const ids = [];
+    works.forEach(({ w }) => ids.push(...mediaOfWork(w)));
+    clients.concat(subs).forEach(it => ids.push(...mediaInItem(it)));
+    const wset = new Set(works.map(x => x.w));
+    for (const it of new Set(works.map(x => x.it))) it.works = it.works.filter(w => !wset.has(w));
+    const gone = new Set(clients.concat(subs));
+    PF.clients.splice(0, PF.clients.length, ...PF.clients.filter(c => !gone.has(c)));
+    for (const c of PF.clients) if (c.children) { c.children = c.children.filter(k => !gone.has(k)); if (!c.children.length) delete c.children; }
+    SEL = new Set(); document.body.classList.remove('pf-sel'); document.querySelector('[data-act=sel-toggle]').textContent = 'Selecionar vários';
+    PF.refresh(); await save(); dropMedia(ids); updSel();
+  },
   async logout() { try { await api('POST', '/api/logout', {}); } catch (e) {} location.reload(); },
   preview() { const on = document.body.classList.toggle('pf-preview'); $('[data-act=preview]').textContent = on ? 'Voltar a editar' : 'Ver como visitante'; }
 };
@@ -1313,8 +1354,28 @@ document.addEventListener('click', e => {
 
 /* ---------- peças injetadas no site ---------- */
 const btn = (act, label, id, extra = '', cls = '') => `<button type="button" class="pf-btn ${cls}" data-act="${act}" data-id="${esc(id || '')}" ${extra}>${label}</button>`;
+/* ---------- seleção em lote ---------- */
+let SEL = new Set(), SELCTX = null;
+const selSet = () => { if (SELCTX !== PF.key) { SEL = new Set(); SELCTX = PF.key; } return SEL; };
+const chk = key => `<label class="pf-a pf-chk" title="Selecionar"><input type="checkbox" data-sel="${esc(key)}" aria-label="Selecionar"${selSet().has(key) ? ' checked' : ''}></label>`;
+function updSel() {
+  const n = selSet().size, d = document.querySelector('[data-act=sel-del]'); if (!d) return;
+  d.textContent = n ? `🗑 Excluir ${n} selecionado${n > 1 ? 's' : ''}` : '🗑 Excluir selecionados'; d.disabled = !n; d.style.opacity = n ? 1 : .4;
+  document.querySelectorAll('.pf-chk input[data-sel]').forEach(c => { c.checked = selSet().has(c.dataset.sel); });
+}
+document.addEventListener('change', e => {
+  const c = e.target.closest && e.target.closest('input[data-sel]'); if (!c) return;
+  const S = selSet(); if (c.checked) S.add(c.dataset.sel); else S.delete(c.dataset.sel); updSel();
+}, true);
+document.addEventListener('click', e => {
+  if (!document.body.classList.contains('pf-sel') || e.target.closest('.pf-bar,.pf-modal-bg,.pf-chk,.pf-a,.crumbs,.lb,[data-act]')) return;
+  const host = e.target.closest('li[data-cid],.subw,.tile'); if (!host) return;
+  const c = host.querySelector('input[data-sel]'); if (!c) return;
+  e.preventDefault(); e.stopPropagation(); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true }));
+}, true);
+addEventListener('hashchange', () => setTimeout(updSel, 60));
 window.PF_ADMIN = {
-  card: c => `<div class="pf-a pf-card-tools"><span class="pf-btn pf-grab" draggable="true" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-client', '‹', c.id, 'data-d="-1" title="Mover para antes"')}${btn('move-client', '›', c.id, 'data-d="1" title="Mover para depois"')}${btn('edit-item', '✎ Editar', c.id)}${btn('del-item', '🗑', c.id, 'title="Excluir"', 'danger')}</div>`,
+  card: c => chk('c:' + c.id) + `<div class="pf-a pf-card-tools"><span class="pf-btn pf-grab" draggable="true" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-client', '‹', c.id, 'data-d="-1" title="Mover para antes"')}${btn('move-client', '›', c.id, 'data-d="1" title="Mover para depois"')}${btn('edit-item', '✎ Editar', c.id)}${btn('del-item', '🗑', c.id, 'title="Excluir"', 'danger')}</div>`,
   newCard: () => `<li class="pf-a"><button type="button" class="pf-newcard" data-act="new-client"><b>+</b>Novo cliente</button></li>`,
   head: (item, isSub) => `<div class="pf-a pf-head">
     ${btn('add-files', '+ Foto ou vídeo', item.id, '', 'primary')}
@@ -1328,7 +1389,7 @@ window.PF_ADMIN = {
   tile: (item, i) => {
     const w = item.works[i] || {}; const car = w.t === 'carousel';
     const crop = !car && w.t !== 'video' && w.src && !w.canva;
-    return `<div class="pf-a pf-tile-tools">
+    return chk('w:' + item.id + ':' + i) + `<div class="pf-a pf-tile-tools">
     <span class="pf-btn pf-grabw" draggable="true" data-i="${i}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
     ${w.t === 'video' && w.src ? btn('pick-poster', '🖼 Capa', item.id, `data-i="${i}" title="Escolher um frame do vídeo como capa"`) : ''}
@@ -1336,7 +1397,7 @@ window.PF_ADMIN = {
     ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
     ${btn('del-work', '🗑', item.id, `data-i="${i}" title="Excluir"`, 'danger')}</div>`;
   },
-  sub: k => `<div class="pf-a pf-sub-tools"><span class="pf-btn pf-grabs" draggable="true" data-sid="${k.id}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-sub', '‹', k.id, 'data-d="-1" title="Mover para antes"')}${btn('move-sub', '›', k.id, 'data-d="1" title="Mover para depois"')}</div>`,
+  sub: k => chk('s:' + k.id) + `<div class="pf-a pf-sub-tools"><span class="pf-btn pf-grabs" draggable="true" data-sid="${k.id}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-sub', '‹', k.id, 'data-d="-1" title="Mover para antes"')}${btn('move-sub', '›', k.id, 'data-d="1" title="Mover para depois"')}</div>`,
   footer: () => `<button type="button" class="pf-a pf-btn pf-foot-edit" data-act="edit-footer">✎ Editar rodapé</button>`,
   about: () => `<button type="button" class="pf-a pf-btn" data-act="edit-about">✎ Editar</button>`
 };
@@ -1389,6 +1450,9 @@ pb.addEventListener('drop', async e => {
 const bar = document.createElement('div'); bar.className = 'pf-bar';
 bar.innerHTML = `<span class="dot2"></span><b>Modo administradora</b>
   <span class="meter"><i><b id="pf-m"></b></i><span id="pf-t">Calculando espaço…</span></span>
+  <button type="button" class="pf-btn" data-act="sel-toggle">Selecionar vários</button>
+  <button type="button" class="pf-btn pf-sel-only" data-act="sel-all">Marcar todos</button>
+  <button type="button" class="pf-btn pf-sel-only danger" data-act="sel-del" disabled style="opacity:.4">🗑 Excluir selecionados</button>
   <button type="button" class="pf-btn" data-act="preview">Ver como visitante</button>
   <button type="button" class="pf-btn" data-act="edit-settings">Ajustes do site</button>
   <button type="button" class="pf-btn" data-act="edit-theme">Aparência</button>
