@@ -110,6 +110,7 @@ function cleanWork(w) {
     return out;
   }
   if (w.src) { if (!okSrc(w.src)) throw new Error('arquivo inválido'); out.src = w.src; }
+  if (w.src && w.fit === 'contain' && t !== 'video') out.fit = 'contain';
   if (w.poster && t === 'video' && w.src) { if (!okSrc(w.poster)) throw new Error('capa inválida'); out.poster = w.poster; const pt = Number(w.posterT); if (Number.isFinite(pt) && pt > 0 && pt < 86400) out.posterT = Math.round(pt * 100) / 100; }
   if (w.canva) {
     let u; try { u = new URL(w.canva); } catch { throw new Error('link do Canva inválido'); }

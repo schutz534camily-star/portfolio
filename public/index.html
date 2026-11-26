@@ -162,6 +162,7 @@ main.wrap{width:100%;flex:1 0 auto}
 .art{position:relative;aspect-ratio:var(--r,16/9);border-radius:14px;overflow:hidden;background:linear-gradient(145deg,#8F1AA8,#3F004C);border:1px solid var(--line);display:grid;place-items:center;transition:transform .3s cubic-bezier(.2,.8,.2,1),border-color .2s}
 .tile:hover .art{transform:scale(1.02);border-color:var(--detail)}
 .art img.zoomable{cursor:zoom-in}
+.art img.fit{object-fit:contain;background:rgba(10,0,14,.55)}
 .art video,.art img{width:100%;height:100%;object-fit:cover;display:block}
 .art video{object-fit:contain;background:#000}
 .art video:fullscreen,.art video:-webkit-full-screen{object-fit:contain;width:100%;height:100%}
@@ -452,7 +453,7 @@ function tileHTML(w, i, tag = true){
     art = `<a class="ph open" href="${esc(w.canva)}" target="_blank" rel="noopener noreferrer"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Abrir apresentação no Canva ↗</span></a>`;
   } else if(w.src){
     art = video ? (w.poster ? `<video src="${esc(w.src)}${w.posterT?'#t='+w.posterT:''}" poster="${esc(w.poster)}"${w.posterT?` data-pt="1" data-ptt="${w.posterT}"`:''} controls controlslist="nofullscreen" playsinline preload="metadata"></video>` : `<video src="${esc(w.src)}#t=0.1" controls controlslist="nofullscreen" playsinline preload="metadata"></video>`)
-                : `<img class="zoomable" data-zoom src="${esc(w.src)}" alt="${esc(w.title)}" loading="lazy" tabindex="0" role="button" aria-label="Ampliar imagem">`;
+                : `<img class="zoomable${w.fit==='contain'?' fit':''}" data-zoom src="${esc(w.src)}" alt="${esc(w.title)}" loading="lazy" tabindex="0" role="button" aria-label="Ampliar imagem">`;
   } else if(video){
     art = `<div class="ph"><span class="play"><svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 2l16 9-16 9z" fill="#FFF3FC"/></svg></span><span>Seu vídeo aqui</span>${AD()?'<small class="onlyme">visível só para você</small>':''}</div>`;
   } else {

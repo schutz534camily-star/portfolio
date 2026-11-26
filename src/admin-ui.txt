@@ -42,7 +42,7 @@ body.pf-preview .pf-a{display:none!important}
 .pf-modal .filebox img{width:96px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .pf-modal .row{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;flex-wrap:wrap}
 .pf-modal .err{color:#ff9bb0;font-size:.85rem;margin-top:10px;min-height:1em}
-.pf-toasts{position:fixed;right:14px;bottom:84px;z-index:110;display:grid;gap:8px;width:min(340px,calc(100vw - 28px))}
+.pf-toasts{position:fixed;right:14px;bottom:84px;z-index:110;display:grid;gap:8px;width:min(340px,calc(100vw - 28px));max-height:calc(100dvh - 110px);overflow-y:auto;align-content:end}
 .pf-toast{background:rgba(20,0,26,.95);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:.88rem;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .pf-toast .pf-cancel{margin-top:8px;padding:5px 12px;font-size:.78rem}
 .pf-toast.ok{border-color:#5CFF9D}.pf-toast.bad{border-color:#ff5c7a}
@@ -191,9 +191,11 @@ function toast(msg, kind, ms = 3500) {
 function progress(label, onCancel) {
   const t = document.createElement('div'); t.className = 'pf-toast';
   t.innerHTML = '<div></div><div class="pbar"><b></b></div>'; t.firstChild.textContent = label; toasts.append(t);
-  let cb = null;
-  if (onCancel) { cb = document.createElement('button'); cb.type = 'button'; cb.className = 'pf-btn pf-cancel'; cb.textContent = '✕ Cancelar envio'; cb.onclick = () => { cb.disabled = true; cb.textContent = 'Cancelando…'; onCancel(); }; t.append(cb); }
+  let cb = null, cancelFn = onCancel;
+  if (onCancel) { cb = document.createElement('button'); cb.type = 'button'; cb.className = 'pf-btn pf-cancel'; cb.textContent = '✕ Cancelar envio'; cb.onclick = () => { cb.disabled = true; cb.textContent = 'Cancelando…'; if (cancelFn) cancelFn(); }; t.append(cb); }
   return {
+    /* linha da fila: troca o que o botão cancelar faz em cada etapa */
+    setCancel(fn) { cancelFn = fn; if (cb) { cb.disabled = false; cb.hidden = false; cb.textContent = '✕ Cancelar envio'; } },
     lock() { if (cb) cb.hidden = true; },
     set(p, txt) { $('b', t).style.width = Math.round(p * 100) + '%'; t.firstChild.textContent = txt || label; },
     done() { t.remove(); },
@@ -374,14 +376,19 @@ function xhrPut(url, blob, onProg, reg) {
     x.send(blob);
   });
 }
+/* fila de envios: um arquivo por vez (a conversão de vídeo usa o computador todo), mesmo vindo de várias seleções */
+let qChain = Promise.resolve();
+const enqueue = fn => { const r = qChain.then(fn); qChain = r.catch(() => {}); return r; };
 /* envia um arquivo/blob em pedaços e devolve o endereço salvo */
 let uploading = 0;
 addEventListener('beforeunload', e => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
-async function sendBlob(blob, name, type, label) {
+async function sendBlob(blob, name, type, label, qrow) {
   let cancelled = false, xhr = null, id = null, cancelRej = null, initP = null;
   const stop = () => Object.assign(new Error('Envio cancelado.'), { cancelled: true });
   const cancelP = new Promise((_, rej) => { cancelRej = rej; }); cancelP.catch(() => {});
-  const p = progress(label || 'Enviando ' + name + '…', () => { cancelled = true; try { if (xhr) xhr.abort(); } catch (e) {} cancelRej(stop()); }); uploading++;
+  const doCancel = () => { cancelled = true; try { if (xhr) xhr.abort(); } catch (e) {} cancelRej(stop()); };
+  const p = qrow || progress(label || 'Enviando ' + name + '…', doCancel); uploading++;
+  if (qrow) { qrow.setCancel(doCancel); label = (qrow.name || name) + ' — enviando'; }
   try {
     const askInit = async () => {
       try { return await api('POST', '/api/media/init', { name, type, size: blob.size }); }
@@ -405,10 +412,10 @@ async function sendBlob(blob, name, type, label) {
     if (cancelled) throw stop();
     p.lock();
     const done = await api('POST', `/api/media/${init.id}/done`, {});
-    p.done(); usage(); return done.src;
+    if (!qrow) p.done(); usage(); return done.src;
   } catch (e) {
     if (cancelled || e.cancelled) {
-      e.cancelled = true; e.shown = true; p.done();
+      e.cancelled = true; e.shown = true; if (!qrow) p.done();
       if (id) { try { await api('DELETE', '/api/media/' + id); } catch (x) {} }
       else if (initP) initP.then(i => api('DELETE', '/api/media/' + i.id)).then(usage).catch(() => {});
       toast('Envio cancelado. O arquivo parcial foi apagado.', '', 3500); usage();
@@ -442,25 +449,27 @@ async function hasHevc(file) {
   return false;
 }
 /* devolve um arquivo que o site consegue tocar em qualquer navegador (MP4 H.264/AAC) */
-async function prepareVideo(file) {
+async function prepareVideo(file, qrow) {
   const ext = (/\.([a-z0-9]+)$/i.exec(file.name) || [, ''])[1].toLowerCase();
   if (ext === 'webm') return file;
   if ((ext === 'mp4' || ext === 'm4v') && !(await hasHevc(file))) return file;
   const base = file.name.replace(/\.[^.]+$/, '') || 'video';
   let cancelled = false, ff = null, dir = '';
-  const p = progress('Preparando o conversor de vídeo…', () => { cancelled = true; if (ff) { try { ff.terminate(); } catch (e) {} ffP = null; } });
+  const doCancel = () => { cancelled = true; if (ff) { try { ff.terminate(); } catch (e) {} ffP = null; } };
+  const p = qrow || progress('Preparando o conversor de vídeo…', doCancel); const pre = qrow ? (qrow.name || file.name) + ' — ' : '';
+  if (qrow) { qrow.setCancel(doCancel); p.set(0, pre + 'preparando o conversor de vídeo…'); }
   const cancelErr = () => { const e = new Error('Conversão cancelada.'); e.cancelled = true; e.shown = true; return e; };
   try {
     toast('Este vídeo precisa ser convertido para MP4 antes de enviar. Pode levar alguns minutos — deixe esta aba aberta.', '', 9000);
     ff = await loadFF(); if (cancelled) throw cancelErr();
     let log = ''; const onLog = ({ message }) => { log += message + '\n'; }; ff.on('log', onLog);
     let ratio = 0; let mode = 'probe';
-    const onProg = ({ progress: pr }) => { if (mode !== 'probe') { ratio = Math.min(.99, Math.max(ratio, pr)); p.set(ratio, (mode === 'copy' ? 'Ajustando o vídeo' : 'Convertendo o vídeo') + ` — ${Math.round(ratio * 100)}%`); } };
+    const onProg = ({ progress: pr }) => { if (mode !== 'probe') { ratio = Math.min(.99, Math.max(ratio, pr)); p.set(ratio, pre + (mode === 'copy' ? 'Ajustando o vídeo' : 'Convertendo o vídeo') + ` — ${Math.round(ratio * 100)}%`); } };
     ff.on('progress', onProg);
     const input = new File([file], 'entrada.' + (ext || 'bin'));
     dir = '/in' + (++ffN); await ff.createDir(dir); await ff.mount('WORKERFS', { files: [input] }, dir);
     const inp = dir + '/' + input.name;
-    p.set(0, 'Lendo o vídeo…');
+    p.set(0, pre + 'Lendo o vídeo…');
     await ff.exec(['-hide_banner', '-i', inp]); if (cancelled) throw cancelErr();
     const vline = (/Stream #0[^\n]*Video: ([^\n]*)/.exec(log) || [])[1] || '', aline = (/Stream #0[^\n]*Audio: ([^\n]*)/.exec(log) || [])[1] || '';
     if (!vline) throw new Error('Não encontrei vídeo dentro deste arquivo.');
@@ -472,29 +481,29 @@ async function prepareVideo(file) {
     let args;
     if (vOK) { mode = 'copy'; args = ['-i', inp, ...map, '-c:v', 'copy', ...(aOK ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '160k']), '-movflags', '+faststart', '-y', '/out.mp4']; }
     else { mode = 'enc'; args = ['-i', inp, ...map, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p', ...vf, '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', '-y', '/out.mp4']; }
-    p.set(0, mode === 'copy' ? 'Ajustando o vídeo — 0%' : 'Convertendo o vídeo — 0%');
+    p.set(0, pre + (mode === 'copy' ? 'Ajustando o vídeo — 0%' : 'Convertendo o vídeo — 0%'));
     const code = await ff.exec(args); if (cancelled) throw cancelErr();
     if (code !== 0) throw new Error('Não consegui converter este vídeo (' + (vline.split(/[ ,(]/)[0] || 'formato desconhecido') + ').');
     const data = await ff.readFile('/out.mp4'); if (!data || !data.length) throw new Error('A conversão não gerou arquivo.');
     try { ff.off('log', onLog); ff.off('progress', onProg); await ff.deleteFile('/out.mp4'); await ff.unmount(dir); await ff.deleteDir(dir); } catch (e) {}
-    p.done();
+    if (!qrow) p.done();
     return new File([data], base + '.mp4', { type: 'video/mp4' });
-  } catch (e0) { console.error('prepareVideo', e0); const e = e0 instanceof Error ? e0 : new Error(String(e0 && e0.message || e0 || 'falha desconhecida')); try { if (ff && dir) { await ff.unmount(dir); await ff.deleteDir(dir); } if (ff) { ff.deleteFile('/out.mp4').catch(() => {}); } } catch (e2) {} p.done(); if (cancelled) throw cancelErr(); if (!e.shown) { toast(e.message || 'Erro ao converter o vídeo.', 'bad', 8000); e.shown = true; } throw e; }
+  } catch (e0) { console.error('prepareVideo', e0); const e = e0 instanceof Error ? e0 : new Error(String(e0 && e0.message || e0 || 'falha desconhecida')); try { if (ff && dir) { await ff.unmount(dir); await ff.deleteDir(dir); } if (ff) { ff.deleteFile('/out.mp4').catch(() => {}); } } catch (e2) {} if (!qrow) p.done(); if (cancelled) throw cancelErr(); if (!e.shown) { toast(e.message || 'Erro ao converter o vídeo.', 'bad', 8000); e.shown = true; } throw e; }
 }
 /* arquivo escolhido -> { src, t, r }. "pre" = imagem já recortada { blob, type, ratio } */
-async function upload(file, pre) {
+async function upload(file, pre, qrow) {
   const isVideo = !pre && isVideoFile(file);
   try {
     let blob = file, type = file.type, ratio;
     if (pre) ({ blob, type, ratio } = pre);
     else if (isVideo) {
-      file = await prepareVideo(file); blob = file; type = /\.webm$/i.test(file.name) ? 'video/webm' : 'video/mp4';
+      file = await prepareVideo(file, qrow); blob = file; type = /\.webm$/i.test(file.name) ? 'video/webm' : 'video/mp4';
       ratio = await videoRatio(file);
     } else {
       if (!file.type.startsWith('image/')) throw new Error('"' + file.name + '" não é imagem nem vídeo.');
       ({ blob, type, ratio } = await prepareImage(file));
     }
-    const src = await sendBlob(blob, file.name, type);
+    const src = await sendBlob(blob, file.name, type, '', qrow);
     return { src, t: isVideo ? 'video' : 'design', r: ratio };
   } catch (e) { if (!e.shown) toast(e.message, 'bad', 6000); throw e; }
 }
@@ -557,7 +566,7 @@ async function autoCrop(source, ratio) {
   return { blob: await canvasBlob(c), type: 'image/jpeg', ratio };
 }
 /* kind: 'card' | 'tile' | 'carousel'. Devolve { blob, type, ratio } | { skipped:true } | null (cancelou) */
-function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind = 'tile', title = 'Recortar foto', counter = '', allowSkip = false }) {
+function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind = 'tile', title = 'Recortar foto', counter = '', allowSkip = false, batch = false }) {
   return new Promise(async resolve => {
     let img;
     const objUrl = typeof source === 'string' ? source : URL.createObjectURL(source);
@@ -573,6 +582,12 @@ function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind 
       for (const [v, l] of ratios) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === cur) o.selected = true; sel.append(o); }
       if (![...sel.options].some(o => o.value === cur)) { const o = document.createElement('option'); o.value = cur; o.textContent = cur.replace('/', ':'); o.selected = true; sel.prepend(o); }
       box.append(mkLabel('Formato da moldura', null, sel));
+    }
+    let allBox = null;
+    if (batch && sel) {
+      const lb = document.createElement('label'); lb.style.cssText = 'display:flex;gap:10px;align-items:center;margin:12px 0 0;cursor:pointer;font-weight:600';
+      allBox = document.createElement('input'); allBox.type = 'checkbox'; allBox.style.cssText = 'width:18px;height:18px;flex:none;margin:0';
+      lb.append(allBox, 'Usar este formato em todas as fotos, sem recortar nada, e publicar direto'); box.append(lb);
     }
     const stage = document.createElement('div'); stage.className = 'crop-stage';
     const im = document.createElement('img'); im.src = objUrl; im.draggable = false; stage.append(im); box.append(stage);
@@ -612,9 +627,11 @@ function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind 
     const finish = v => { if (typeof source !== 'string') URL.revokeObjectURL(objUrl); sh.close(); resolve(v); };
     sh.ent.cancel = () => finish(null);
     const ok = mkBtn('Aplicar recorte', 'primary', null, 'submit');
+    if (allBox) allBox.onchange = () => { ok.textContent = allBox.checked ? 'Publicar todas sem recortar' : 'Aplicar recorte'; p0.textContent = allBox.checked ? 'Todas as fotos ficam neste formato, inteiras (sem cortar nada), e são publicadas direto, sem abrir o recorte de cada uma.' : 'Arraste a foto para reposicionar e use o zoom. O que está dentro da moldura é o que vai aparecer.'; };
     box.append(row(mkBtn('Cancelar', '', () => finish(null)), ...(allowSkip ? [mkBtn('Usar sem recortar', '', () => finish({ skipped: true }))] : []), ok));
     box.onsubmit = async e => {
       e.preventDefault(); ok.disabled = true;
+      if (allBox && allBox.checked) return finish({ allNoCrop: true, ratio: cur });
       const r = region(); const c = renderCrop(img, r.sx, r.sy, r.sw, r.sh, 1600);
       finish({ blob: await canvasBlob(c), type: 'image/jpeg', ratio: cur });
     };
@@ -627,7 +644,7 @@ async function cropFile(file, opts) {
   const r = await cropDialog({ ...opts, source: file, allowSkip: !opts.fixed });
   if (!r) return null;
   if (r.skipped) return prepareImage(file);
-  return r;
+  return r;   /* pode vir { allNoCrop, ratio } */
 }
 
 /* ---------- utilidades de dados ---------- */
@@ -1205,20 +1222,48 @@ const actions = {
     const it = findItem(id); if (!it) return;
     const files = await pickFiles(VIDEO_ACCEPT, true); if (!files.length) return;
     it.works = it.works || [];
-    const nImg = files.filter(f => f.type.startsWith('image/')).length; let k = 0;
-    for (const f of files) {
+    const nImg = files.filter(f => f.type.startsWith('image/')).length; let k = 0, allFmt = null, stopped = false;
+    /* todas as linhas da fila já aparecem (mesmo as que ainda vão ser recortadas) */
+    const jobs = files.map(f => {
+      const j = { f, pre: null, cancelled: false, fd: false }; uploading++;
+      j.fin = () => { if (!j.fd) { j.fd = true; uploading--; } };
+      j.row = progress(`${f.name} — na fila`, () => { j.cancelled = true; j.row.done(); j.fin(); }); j.row.name = f.name;
+      return j;
+    });
+    const runJob = async j => {
+      if (j.cancelled) return;
+      const f = j.f, qrow = j.row;
       try {
+        qrow.set(0, `${f.name} — começando…`);
         let up;
-        if (f.type.startsWith('image/')) {
-          k++;
-          const pre = await cropFile(f, { ratio: '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto', counter: nImg > 1 ? `${k} de ${nImg}` : '' });
-          if (!pre) { if (nImg > 1) toast('Envio cancelado nas fotos restantes.'); break; }
-          up = await upload(f, pre); up.t = 'design';
-        } else up = await upload(f);
+        if (j.pre) { up = await upload(f, j.pre, qrow); up.t = 'design'; if (j.pre.fit) up.fit = 'contain'; }
+        else up = await upload(f, null, qrow);
         const cur = findItem(id); if (!cur) throw new Error('Não achei o card para colocar o arquivo. Atualize a página e tente de novo.');
-        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src, ...(g ? { g } : {}) });
+        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src, ...(up.fit ? { fit: up.fit } : {}), ...(g ? { g } : {}) });
         PF.refresh(); await save();
-      } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao adicionar.', 'bad', 7000); }
+        qrow.done();
+      } catch (e) { if (e.cancelled) qrow.done(); else qrow.fail(`${f.name} — ${e.message || 'erro ao enviar'}`); }
+      finally { j.fin(); }
+    };
+    for (const j of jobs) {
+      if (j.cancelled) continue;
+      const f = j.f;
+      if (stopped) { j.cancelled = true; j.row.done(); j.fin(); continue; }
+      if (f.type.startsWith('image/')) {
+        k++;
+        try {
+          if (allFmt) { j.pre = await prepareImage(f); j.pre.ratio = allFmt; j.pre.fit = true; }
+          else {
+            j.row.set(0, `${f.name} — escolhendo o recorte…`);
+            const pre = await cropFile(f, { ratio: '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto', counter: nImg > 1 ? `${k} de ${nImg}` : '', batch: nImg - k > 0 });
+            if (!pre) { stopped = true; j.cancelled = true; j.row.done(); j.fin(); if (nImg > 1) toast('Envio cancelado nas fotos restantes.'); continue; }
+            if (pre.allNoCrop) { allFmt = pre.ratio; j.pre = await prepareImage(f); j.pre.ratio = allFmt; j.pre.fit = true; }
+            else j.pre = pre;
+          }
+        } catch (e) { j.cancelled = true; j.row.fail(`${f.name} — ${e.message || 'erro na imagem'}`); j.fin(); continue; }
+        j.row.set(0, `${f.name} — na fila`);
+      }
+      enqueue(() => runJob(j));
     }
   },
   async 'add-carousel'(id, _i, _d, g) {
@@ -1242,7 +1287,7 @@ const actions = {
     const r = await cropDialog({ source: w.src, ratio: w.r, ratios: RATIOS, kind: 'tile', title: 'Ajustar o recorte' }); if (!r) return;
     try {
       const src = await sendBlob(r.blob, 'recorte.jpg', r.type, 'Enviando foto…'); const old = mediaOf(w.src);
-      w.src = src; w.r = r.ratio; PF.refresh(); await save(); dropMedia(old);
+      w.src = src; w.r = r.ratio; delete w.fit; PF.refresh(); await save(); dropMedia(old);
     } catch (e) {}
   },
   async 'move-client'(id, _i, d) {
@@ -1341,7 +1386,7 @@ const actions = {
       if (f.type.startsWith('image/')) { pre = await cropFile(f, { ratio: w.r || '4/5', ratios: RATIOS, kind: 'tile', title: 'Recortar foto' }); if (!pre) return; }
       const up = await upload(f, pre); if (pre) up.t = 'design'; const old = [...mediaOf(w.src), ...mediaOf(w.poster)];
       const cur = findItem(id); const w2 = cur && cur.works[i]; if (!w2) throw new Error('Não achei o trabalho para trocar. Atualize a página e tente de novo.');
-      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.canva; delete w2.poster; delete w2.posterT;
+      w2.src = up.src; w2.t = up.t; w2.r = up.r; delete w2.fit; delete w2.canva; delete w2.poster; delete w2.posterT;
       PF.refresh(); await save(); dropMedia(old);
     } catch (e) { if (!e.shown && !(e instanceof ApiError)) toast(e.message || 'Erro ao trocar.', 'bad', 7000); }
   },
