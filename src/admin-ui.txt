@@ -376,13 +376,104 @@ function xhrPut(url, blob, onProg, reg) {
     x.send(blob);
   });
 }
+/* ---------- envios que continuam depois de recarregar a página ---------- */
+const QDB = {
+  _p: null,
+  open() { return this._p || (this._p = new Promise((res, rej) => { const r = indexedDB.open('pf-queue', 1); r.onupgradeneeded = () => { r.result.createObjectStore('jobs', { keyPath: 'id' }); r.result.createObjectStore('blobs'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async run(names, mode, fn) {
+    const db = await this.open();
+    return new Promise((res, rej) => { const t = db.transaction(names, mode); let out; try { out = fn(...names.map(n => t.objectStore(n))); } catch (e) { rej(e); return; } t.oncomplete = () => res(out && typeof out === 'object' && 'result' in out ? out.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abortado')); });
+  },
+  putMeta(m) { return this.run(['jobs'], 'readwrite', s => s.put(m)); },
+  putBlob(k, b) { return this.run(['blobs'], 'readwrite', s => s.put(b, k)); },
+  delBlob(k) { return this.run(['blobs'], 'readwrite', s => s.delete(k)); },
+  getBlob(k) { return this.run(['blobs'], 'readonly', s => s.get(k)); },
+  all() { return this.run(['jobs'], 'readonly', s => s.getAll()); },
+  del(id) { return this.run(['jobs', 'blobs'], 'readwrite', (a, b) => { a.delete(id); for (const k of ['file', 'pre', 'conv']) b.delete(id + ':' + k); }); }
+};
+const metaOf = j => ({ id: j.id, itemId: j.itemId, g: j.g || '', name: j.name, ord: j.ord, isVideo: !!j.isVideo, pre: j.pre ? { type: j.pre.type, ratio: j.pre.ratio, fit: !!j.pre.fit } : null, hasConv: !!j.convStored, ratio: j.ratio || '', up: j.up || null, next: j.next || 0, src: j.src || '', t: j.t || '', r: j.r || '', fit: !!j.fit });
+function saveMeta(j) { if (j.saved) QDB.putMeta(metaOf(j)).catch(() => {}); }
+let warnedPersist = false;
+/* guarda uma cópia do arquivo no navegador para poder retomar se a página for recarregada */
+async function persistJob(j) {
+  try {
+    if (j.pre) await QDB.putBlob(j.id + ':pre', j.pre.blob); else await QDB.putBlob(j.id + ':file', j.file);
+    await QDB.putMeta(metaOf(j)); j.saved = true;
+  } catch (e) {
+    j.saved = false; QDB.del(j.id).catch(() => {});
+    if (!warnedPersist) { warnedPersist = true; toast('Não consegui guardar uma cópia de "' + j.name + '" no navegador. Se você recarregar a página antes de terminar, este envio será perdido.', 'bad', 9000); }
+  }
+}
+function makeJob(base) {
+  const j = { fd: false, cancelled: false, saved: false, ...base }; uploading++;
+  j.fin = () => { if (!j.fd) { j.fd = true; uploading--; } };
+  j.row = progress(`${j.name} — na fila`, () => { j.cancelled = true; j.row.done(); j.fin(); QDB.del(j.id).catch(() => {}); }); j.row.name = j.name;
+  return j;
+}
+/* converte (se for vídeo) e envia; devolve { src, t, r, fit } */
+async function uploadJob(j, qrow) {
+  let blob, type, ratio, fname = j.name;
+  if (j.pre) { ({ blob, type, ratio } = j.pre); }
+  else {
+    let conv = j.conv;
+    if (!conv) {
+      conv = await prepareVideo(j.file, qrow); j.conv = conv;
+      if (j.saved && conv !== j.file) { try { await QDB.putBlob(j.id + ':conv', conv); j.convStored = true; await QDB.delBlob(j.id + ':file'); saveMeta(j); } catch (e) {} }
+    }
+    blob = conv; fname = conv.name; type = /\.webm$/i.test(conv.name) ? 'video/webm' : 'video/mp4';
+    if (!j.ratio) { j.ratio = await videoRatio(conv); saveMeta(j); }
+    ratio = j.ratio;
+  }
+  const src = await sendBlob(blob, fname, type, '', qrow, j);
+  return { src, t: j.isVideo ? 'video' : 'design', r: ratio, fit: !!(j.pre && j.pre.fit) };
+}
+/* roda um item da fila até o fim (guardando o andamento, para poder retomar) */
+async function runJob(j) {
+  const run = async () => {
+    if (j.cancelled) return;
+    const qrow = j.row;
+    try {
+      if (j.persist) await j.persist;
+      if (j.cancelled) return;
+      qrow.set(0, `${j.name} — começando…`);
+      if (!j.src) { const up = await uploadJob(j, qrow); j.src = up.src; j.t = up.t; j.r = up.r; j.fit = up.fit; saveMeta(j); }
+      const cur = findItem(j.itemId); if (!cur) throw new Error('Não achei o card para colocar o arquivo. Atualize a página e tente de novo.');
+      cur.works = cur.works || [];
+      if (!cur.works.some(w => w.src === j.src)) { cur.works.push({ t: j.t, title: '', r: j.r, src: j.src, ...(j.fit ? { fit: 'contain' } : {}), ...(j.g ? { g: j.g } : {}) }); PF.refresh(); await save(); }
+      qrow.done(); await QDB.del(j.id).catch(() => {});
+    } catch (e) { if (e.cancelled) qrow.done(); else qrow.fail(`${j.name} — ${e.message || 'erro ao enviar'}`); QDB.del(j.id).catch(() => {}); }
+  };
+  try {
+    if (navigator.locks) await navigator.locks.request('pf-job-' + j.id, { ifAvailable: true }, lock => lock ? run() : (j.row.done(), null));
+    else await run();
+  } finally { j.fin(); }
+}
+/* depois de recarregar: retoma o que estava na fila (a conversão de vídeo recomeça do zero; o envio continua do pedaço onde parou) */
+async function resumeJobs() {
+  let list = []; try { list = (await QDB.all()).sort((a, b) => a.ord - b.ord); } catch (e) { return; }
+  if (!list.length) return;
+  const todo = [];
+  for (const m of list) {
+    try {
+      if (!findItem(m.itemId)) { await QDB.del(m.id); continue; }
+      const j = makeJob({ ...m, g: m.g || '', pre: null, saved: true, convStored: m.hasConv, fit: !!m.fit });
+      if (m.pre) { const b = await QDB.getBlob(m.id + ':pre'); if (!b) throw new Error('arquivo guardado não encontrado'); j.pre = { ...m.pre, blob: b }; }
+      else if (m.hasConv) { j.conv = await QDB.getBlob(m.id + ':conv'); if (!j.conv) throw new Error('arquivo guardado não encontrado'); }
+      else if (!m.src) { j.file = await QDB.getBlob(m.id + ':file'); if (!j.file) throw new Error('arquivo guardado não encontrado'); }
+      todo.push(j);
+    } catch (e) { QDB.del(m.id).catch(() => {}); }
+  }
+  if (!todo.length) return;
+  toast(todo.length === 1 ? 'Retomando 1 envio que estava em andamento…' : `Retomando ${todo.length} envios que estavam em andamento…`, '', 6000);
+  for (const j of todo) enqueue(() => runJob(j));
+}
 /* fila de envios: um arquivo por vez (a conversão de vídeo usa o computador todo), mesmo vindo de várias seleções */
 let qChain = Promise.resolve();
 const enqueue = fn => { const r = qChain.then(fn); qChain = r.catch(() => {}); return r; };
 /* envia um arquivo/blob em pedaços e devolve o endereço salvo */
 let uploading = 0;
 addEventListener('beforeunload', e => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
-async function sendBlob(blob, name, type, label, qrow) {
+async function sendBlob(blob, name, type, label, qrow, job) {
   let cancelled = false, xhr = null, id = null, cancelRej = null, initP = null;
   const stop = () => Object.assign(new Error('Envio cancelado.'), { cancelled: true });
   const cancelP = new Promise((_, rej) => { cancelRej = rej; }); cancelP.catch(() => {});
@@ -400,14 +491,25 @@ async function sendBlob(blob, name, type, label, qrow) {
         return api('POST', '/api/media/init', { name, type, size: blob.size, confirmOver: true });
       }
     };
-    initP = askInit(); initP.catch(() => {});
-    const init = await Promise.race([initP, cancelP]); id = init.id;
-    let sent = 0;
-    for (let i = 0; i < init.chunks; i++) {
+    /* retomada: se já existe um envio parcial deste arquivo no servidor, continua do pedaço onde parou */
+    if (job && job.up) {
+      let alive = false; try { const l = await api('GET', '/api/media'); alive = l.files.some(f => f.id === job.up.id && !f.done); } catch (e) {}
+      if (!alive && (job.next || 0) < job.up.chunks) { job.up = null; job.next = 0; }
+    }
+    let init;
+    if (job && job.up) init = job.up;
+    else {
+      initP = askInit(); initP.catch(() => {});
+      init = await Promise.race([initP, cancelP]);
+      if (job) { job.up = { id: init.id, chunk: init.chunk, chunks: init.chunks }; job.next = 0; saveMeta(job); }
+    }
+    id = init.id;
+    const first = job ? (job.next || 0) : 0; let sent = first * init.chunk;
+    for (let i = first; i < init.chunks; i++) {
       if (cancelled) throw stop();
       const part = blob.slice(i * init.chunk, (i + 1) * init.chunk); const base = sent;
       await Promise.race([cancelP, xhrPut(`/api/media/${init.id}/${i}`, part, loaded => p.set((base + loaded) / blob.size, `${label || 'Enviando ' + name} — ${Math.round((base + loaded) / blob.size * 100)}%`), x => { xhr = x; })]);
-      sent += part.size;
+      sent += part.size; if (job) { job.next = i + 1; saveMeta(job); }
     }
     if (cancelled) throw stop();
     p.lock();
@@ -1223,33 +1325,14 @@ const actions = {
     const files = await pickFiles(VIDEO_ACCEPT, true); if (!files.length) return;
     it.works = it.works || [];
     const nImg = files.filter(f => f.type.startsWith('image/')).length; let k = 0, allFmt = null, stopped = false;
+    const t0 = Date.now(), rid = Math.random().toString(36).slice(2, 8);
     /* todas as linhas da fila já aparecem (mesmo as que ainda vão ser recortadas) */
-    const jobs = files.map(f => {
-      const j = { f, pre: null, cancelled: false, fd: false }; uploading++;
-      j.fin = () => { if (!j.fd) { j.fd = true; uploading--; } };
-      j.row = progress(`${f.name} — na fila`, () => { j.cancelled = true; j.row.done(); j.fin(); }); j.row.name = f.name;
-      return j;
-    });
-    const runJob = async j => {
-      if (j.cancelled) return;
-      const f = j.f, qrow = j.row;
-      try {
-        qrow.set(0, `${f.name} — começando…`);
-        let up;
-        if (j.pre) { up = await upload(f, j.pre, qrow); up.t = 'design'; if (j.pre.fit) up.fit = 'contain'; }
-        else up = await upload(f, null, qrow);
-        const cur = findItem(id); if (!cur) throw new Error('Não achei o card para colocar o arquivo. Atualize a página e tente de novo.');
-        cur.works = cur.works || []; cur.works.push({ t: up.t, title: '', r: up.r, src: up.src, ...(up.fit ? { fit: up.fit } : {}), ...(g ? { g } : {}) });
-        PF.refresh(); await save();
-        qrow.done();
-      } catch (e) { if (e.cancelled) qrow.done(); else qrow.fail(`${f.name} — ${e.message || 'erro ao enviar'}`); }
-      finally { j.fin(); }
-    };
+    const jobs = files.map((f, n) => makeJob({ id: `${t0.toString(36)}${rid}${n}`, itemId: id, g: g || '', name: f.name, file: f, isVideo: !f.type.startsWith('image/'), ord: t0 + n, pre: null }));
     for (const j of jobs) {
       if (j.cancelled) continue;
-      const f = j.f;
+      const f = j.file;
       if (stopped) { j.cancelled = true; j.row.done(); j.fin(); continue; }
-      if (f.type.startsWith('image/')) {
+      if (!j.isVideo) {
         k++;
         try {
           if (allFmt) { j.pre = await prepareImage(f); j.pre.ratio = allFmt; j.pre.fit = true; }
@@ -1263,6 +1346,8 @@ const actions = {
         } catch (e) { j.cancelled = true; j.row.fail(`${f.name} — ${e.message || 'erro na imagem'}`); j.fin(); continue; }
         j.row.set(0, `${f.name} — na fila`);
       }
+      if (j.cancelled) continue;
+      j.persist = persistJob(j);
       enqueue(() => runJob(j));
     }
   },
@@ -1598,4 +1683,5 @@ async function usage() {
 }
 usage();
 PF.refresh();
+resumeJobs();
 })();
