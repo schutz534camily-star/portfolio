@@ -1493,6 +1493,23 @@ const actions = {
     (it.groups = it.groups || []).push({ id: gid, name: v.name.trim() });
     PF.refresh(); await save();
   },
+  /* escolhe em qual categoria o trabalho fica (assim vídeos, fotos e GIFs podem ficar juntos) */
+  async 'set-cat'(id, i) {
+    const it = findItem(id); const w = it && it.works && it.works[i]; if (!w) return;
+    const gs = it.groups || [];
+    const std = (w.t === 'video' ? (it.secV || 'Vídeos') : (it.secD || 'Design e materiais')) + ' (padrão do tipo)';
+    const opts = [['', std], ...gs.map(g => [g.id, g.name || 'Categoria']), ['__new', '+ Criar categoria nova…']];
+    const v = await modal({ title: 'Mover para categoria', ok: 'Mover', fields: [{ key: 'g', label: 'Categoria', hint: 'Em uma categoria criada por você podem ficar vídeos, fotos e GIFs juntos.', type: 'select', options: opts, value: gs.some(g => g.id === w.g) ? w.g : '' }] }); if (!v) return;
+    let gid = v.g;
+    if (gid === '__new') {
+      if (gs.length >= 12) return toast('Limite de 12 categorias nesta página.', 'bad');
+      const n = await modal({ title: 'Nova categoria', ok: 'Criar e mover', fields: [{ key: 'name', label: 'Nome da categoria', hint: 'Ex.: Cards, Materiais impressos…', required: true, max: 60 }] }); if (!n) return;
+      do { gid = Math.random().toString(36).slice(2, 8); } while (!/^[a-z0-9]{6}$/.test(gid) || gs.some(g => g.id === gid));
+      (it.groups = it.groups || []).push({ id: gid, name: n.name.trim() });
+    }
+    if (gid) w.g = gid; else delete w.g;
+    PF.refresh(); await save();
+  },
   async 'rename-sec'(id, _i, _d, g) {
     const it = findItem(id); if (!it || !g) return;
     const grp = (it.groups || []).find(x => x.id === g);
@@ -1614,6 +1631,7 @@ window.PF_ADMIN = {
     return chk('w:' + item.id + ':' + i) + `<div class="pf-a pf-tile-tools">
     <span class="pf-btn pf-grabw" draggable="true" data-i="${i}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
+    ${btn('set-cat', '📂', item.id, `data-i="${i}" title="Mover para outra categoria (juntar vídeos e fotos)"`)}
     ${w.t === 'video' && w.src ? btn('pick-poster', '🖼 Capa', item.id, `data-i="${i}" title="Escolher um frame do vídeo como capa"`) : ''}
     ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}
     ${car ? '' : btn('replace-work', '⟳ Trocar', item.id, `data-i="${i}" title="Substituir o arquivo"`)}
