@@ -52,7 +52,7 @@ body.pf-on .rodape{padding-bottom:96px}
 .pf-chk{display:none;position:absolute;top:10px;left:10px;z-index:6;width:30px;height:30px;border-radius:8px;background:rgba(20,0,26,.85);border:1px solid var(--line);align-items:center;justify-content:center;cursor:pointer}
 body.pf-sel .pf-chk{display:flex}
 .pf-chk input{width:20px;height:20px;accent-color:#FFC94A;cursor:pointer;margin:0}
-body.pf-sel .expand,body.pf-sel .pf-card-tools,body.pf-sel .pf-tile-tools,body.pf-sel .pf-sub-tools{display:none!important}
+body.pf-sel .expand,body.pf-sel .vclick,body.pf-sel .pf-card-tools,body.pf-sel .pf-tile-tools,body.pf-sel .pf-sub-tools{display:none!important}
 body.pf-sel li[data-cid]:has(.pf-chk input:checked) .card,body.pf-sel .subw:has(.pf-chk input:checked) .sub,body.pf-sel .tile:has(.pf-chk input:checked) .art{outline:3px solid #FFC94A;outline-offset:2px}
 body.pf-sel .tile .art,body.pf-sel .card,body.pf-sel .sub{cursor:pointer}
 body.pf-sel .tile video{pointer-events:none}
@@ -470,6 +470,7 @@ async function resumeJobs() {
   for (const j of todo) enqueue(() => runJob(j));
 }
 /* fila de envios: um arquivo por vez (a conversão de vídeo usa o computador todo), mesmo vindo de várias seleções */
+const SIZES = [['', 'Automático (padrão)'], ['1', 'Pequeno'], ['2', 'Médio'], ['3', 'Grande'], ['4', 'Largura total']];
 let qChain = Promise.resolve();
 const enqueue = fn => { const r = qChain.then(fn); qChain = r.catch(() => {}); return r; };
 /* envia um arquivo/blob em pedaços e devolve o endereço salvo */
@@ -1493,6 +1494,26 @@ const actions = {
     (it.groups = it.groups || []).push({ id: gid, name: v.name.trim() });
     PF.refresh(); await save();
   },
+  /* tamanho dos trabalhos no site: de um só ou de todos da categoria */
+  async 'set-size'(id, i) {
+    const it = findItem(id); const w = it && it.works && it.works[i]; if (!w) return;
+    const gids = new Set((it.groups || []).map(x => x.id)); const sec = x => (x.g && gids.has(x.g)) ? x.g : 'd';
+    const v = await modal({ title: 'Tamanho no site', ok: 'Aplicar', fields: [
+      { key: 'sz', label: 'Tamanho', hint: 'Em telas pequenas (celular) todos ocupam a largura toda.', type: 'select', options: SIZES, value: String(w.sz || '') },
+      { key: 'all', label: 'Aplicar em', type: 'select', options: [['0', 'Só este trabalho'], ['1', 'Todos desta categoria']], value: '0' }] }); if (!v) return;
+    const n = Number(v.sz) || 0, key = sec(w);
+    for (const x of it.works) if (v.all === '1' ? sec(x) === key : x === w) { if (n) x.sz = n; else delete x.sz; }
+    PF.refresh(); await save();
+  },
+  async 'size-all'(id, _i, _d, g) {
+    const it = findItem(id); if (!it || !g) return;
+    const gids = new Set((it.groups || []).map(x => x.id)); const sec = x => (x.g && gids.has(x.g)) ? x.g : 'd';
+    const list = it.works.filter(x => sec(x) === g); if (!list.length) return toast('Esta categoria está vazia.');
+    const same = list.every(x => (x.sz || 0) === (list[0].sz || 0));
+    const v = await modal({ title: 'Tamanho de todos desta categoria', ok: 'Aplicar', fields: [{ key: 'sz', label: 'Tamanho', hint: 'Vale para os ' + list.length + ' trabalhos desta categoria. Em telas pequenas (celular) todos ocupam a largura toda.', type: 'select', options: SIZES, value: same ? String(list[0].sz || '') : '' }] }); if (!v) return;
+    const n = Number(v.sz) || 0; for (const x of list) { if (n) x.sz = n; else delete x.sz; }
+    PF.refresh(); await save();
+  },
   /* escolhe em qual categoria o trabalho fica (assim vídeos, fotos e GIFs podem ficar juntos) */
   async 'set-cat'(id, i) {
     const it = findItem(id); const w = it && it.works && it.works[i]; if (!w) return;
@@ -1615,7 +1636,7 @@ window.PF_ADMIN = {
     ${isSub ? '' : btn('new-sub', '+ Novo projeto (galeria)', item.id)}
     ${btn('edit-item', '✎ Editar informações', item.id)}
     ${btn('del-item', '🗑 Excluir', item.id, '', 'danger')}</div>`,
-  sec: (item, key, custom) => `<div class="pf-a pf-sec">${btn('rename-sec', '✎ Renomear', item.id, `data-g="${esc(key)}"`)}${custom ? btn('add-files', '+ Foto ou vídeo', item.id, `data-g="${esc(key)}"`) + btn('add-carousel', '+ Carrossel', item.id, `data-g="${esc(key)}"`) + btn('add-canva', '+ Link do Canva', item.id, `data-g="${esc(key)}"`) + btn('del-sec', '🗑 Apagar categoria', item.id, `data-g="${esc(key)}"`, 'danger') : ''}</div>`,
+  sec: (item, key, custom) => `<div class="pf-a pf-sec">${btn('rename-sec', '✎ Renomear', item.id, `data-g="${esc(key)}"`)}${btn('size-all', '↔ Tamanho de todos', item.id, `data-g="${esc(key)}" title="Definir o mesmo tamanho para todos desta categoria"`)}${custom ? btn('add-files', '+ Foto ou vídeo', item.id, `data-g="${esc(key)}"`) + btn('add-carousel', '+ Carrossel', item.id, `data-g="${esc(key)}"`) + btn('add-canva', '+ Link do Canva', item.id, `data-g="${esc(key)}"`) + btn('del-sec', '🗑 Apagar categoria', item.id, `data-g="${esc(key)}"`, 'danger') : ''}</div>`,
   lay: (item, key) => {
     const rows = PF.layout(item), r = rows.findIndex(x => x.includes(key)); if (r < 0) return '';
     const row = rows[r], pair = row.length === 2, g = `data-g="${esc(key)}"`;
@@ -1630,6 +1651,7 @@ window.PF_ADMIN = {
     return chk('w:' + item.id + ':' + i) + `<div class="pf-a pf-tile-tools">
     <span class="pf-btn pf-grabw" draggable="true" data-i="${i}" title="Arraste para mudar a ordem" style="cursor:grab">⠿</span>${btn('move-work', '‹', item.id, `data-i="${i}" data-d="-1" title="Mover para antes"`)}${btn('move-work', '›', item.id, `data-i="${i}" data-d="1" title="Mover para depois"`)}
     ${btn('edit-work', '✎', item.id, `data-i="${i}" title="Editar"`)}
+    ${btn('set-size', '↔', item.id, `data-i="${i}" title="Tamanho no site"`)}
     ${btn('set-cat', '📂', item.id, `data-i="${i}" title="Mover para outra categoria (juntar vídeos e fotos)"`)}
     ${w.t === 'video' && w.src ? btn('pick-poster', '🖼 Capa', item.id, `data-i="${i}" title="Escolher um frame do vídeo como capa"`) : ''}
     ${crop ? btn('crop-work', '✂', item.id, `data-i="${i}" title="Recortar e reposicionar"`) : ''}

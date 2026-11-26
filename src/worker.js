@@ -103,6 +103,7 @@ function cleanWork(w) {
   const t = w.t === 'video' ? 'video' : w.t === 'carousel' ? 'carousel' : 'design';
   const out = { t, title: str(w.title, 120), r: RATIO_OK.test(w.r) ? w.r : '16/9' };
   if (typeof w.g === 'string' && /^[a-z0-9]{1,12}$/.test(w.g)) out.g = w.g;
+  if (w.sz === 1 || w.sz === 2 || w.sz === 3 || w.sz === 4) out.sz = w.sz;
   if (t === 'carousel') {
     if (!Array.isArray(w.images)) throw new Error('carrossel inválido');
     if (!w.images.every(okSrc)) throw new Error('arquivo inválido no carrossel');
