@@ -1385,7 +1385,7 @@ const actions = {
   },
   async 'move-work'(id, i, d) {
     const it = findItem(id); const L = it && it.works; if (!L || !L[i]) return;
-    const gids = new Set((it.groups || []).map(x => x.id)); const grp = w => (w.g && gids.has(w.g)) ? 'g' + w.g : w.t === 'video' ? 'v' : 'd'; let j = i + d;
+    const gids = new Set((it.groups || []).map(x => x.id)); const grp = w => (w.g && gids.has(w.g)) ? 'g' + w.g : 'd'; let j = i + d;
     while (j >= 0 && j < L.length && grp(L[j]) !== grp(L[i])) j += d;
     if (j < 0 || j >= L.length) return;
     [L[i], L[j]] = [L[j], L[i]]; PF.refresh(); await save();
@@ -1497,9 +1497,9 @@ const actions = {
   async 'set-cat'(id, i) {
     const it = findItem(id); const w = it && it.works && it.works[i]; if (!w) return;
     const gs = it.groups || [];
-    const std = (w.t === 'video' ? (it.secV || 'Vídeos') : (it.secD || 'Design e materiais')) + ' (padrão do tipo)';
+    const std = (it.secD || 'Trabalhos') + ' (sem categoria)';
     const opts = [['', std], ...gs.map(g => [g.id, g.name || 'Categoria']), ['__new', '+ Criar categoria nova…']];
-    const v = await modal({ title: 'Mover para categoria', ok: 'Mover', fields: [{ key: 'g', label: 'Categoria', hint: 'Em uma categoria criada por você podem ficar vídeos, fotos e GIFs juntos.', type: 'select', options: opts, value: gs.some(g => g.id === w.g) ? w.g : '' }] }); if (!v) return;
+    const v = await modal({ title: 'Mover para categoria', ok: 'Mover', fields: [{ key: 'g', label: 'Categoria', hint: 'Escolha onde este trabalho aparece. Em qualquer categoria podem ficar vídeos, fotos e GIFs juntos.', type: 'select', options: opts, value: gs.some(g => g.id === w.g) ? w.g : '' }] }); if (!v) return;
     let gid = v.g;
     if (gid === '__new') {
       if (gs.length >= 12) return toast('Limite de 12 categorias nesta página.', 'bad');
@@ -1513,11 +1513,10 @@ const actions = {
   async 'rename-sec'(id, _i, _d, g) {
     const it = findItem(id); if (!it || !g) return;
     const grp = (it.groups || []).find(x => x.id === g);
-    const vids = (it.works || []).some(w => w.t === 'video' && !((it.groups || []).some(x => x.id === w.g)));
-    const cur = grp ? grp.name : g === 'v' ? (it.secV || 'Vídeos') : (it.secD || (vids ? 'Design e materiais' : 'Trabalhos'));
+    const cur = grp ? grp.name : (it.secD || 'Trabalhos');
     const v = await modal({ title: 'Renomear categoria', ok: 'Salvar', fields: [{ key: 'name', label: 'Nome', value: cur, required: !!grp, max: 60, hint: grp ? '' : 'Deixe vazio para voltar ao nome padrão.' }] }); if (!v) return;
     const name = v.name.trim();
-    if (grp) grp.name = name; else if (g === 'v') { if (name) it.secV = name; else delete it.secV; } else { if (name) it.secD = name; else delete it.secD; }
+    if (grp) grp.name = name; else { if (name) it.secD = name; else delete it.secD; }
     PF.refresh(); await save();
   },
   async 'del-sec'(id, _i, _d, g) {
@@ -1675,7 +1674,7 @@ pb.addEventListener('drop', async e => {
     const t = e.target.closest('.tile'); if (!t) return; e.preventDefault();
     const it = findItem(PF.key); if (!it) return; const L = it.works, from = d.i, to = Number(t.dataset.wi);
     if (Number.isNaN(to) || from === to || !L[from] || !L[to]) return;
-    const gids = new Set((it.groups || []).map(x => x.id)); const gk = w => (w.g && gids.has(w.g)) ? 'g' + w.g : w.t === 'video' ? 'v' : 'd';
+    const gids = new Set((it.groups || []).map(x => x.id)); const gk = w => (w.g && gids.has(w.g)) ? 'g' + w.g : 'd';
     if (gk(L[from]) !== gk(L[to])) { toast('Só dá para mudar a ordem dentro da mesma categoria.', '', 4500); return; }
     const [m] = L.splice(from, 1); L.splice(to, 0, m); PF.refresh(); await save();
   } else {

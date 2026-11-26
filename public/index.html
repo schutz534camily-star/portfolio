@@ -475,9 +475,9 @@ function section(title, list, isVideo, key, custom){
 }
 
 let curItem = null, curNested = false;
-/* ordem e colunas das categorias: lista de linhas, cada linha com 1 ou 2 categorias (p = Projetos, v = Vídeos, d = Design/Trabalhos, ou o id da categoria) */
+/* ordem e colunas das categorias: lista de linhas, cada linha com 1 ou 2 categorias (p = Projetos, d = Trabalhos sem categoria, ou o id da categoria) */
 function layoutRows(item, nested){
-  const all = []; if(!nested && item.children) all.push('p'); all.push('v','d', ...(item.groups||[]).map(g => g.id));
+  const all = []; if(!nested && item.children) all.push('p'); all.push('d', ...(item.groups||[]).map(g => g.id));
   const seen = new Set(), rows = [];
   for(const r of (item.layout||[])){
     const row = (Array.isArray(r) ? r : []).filter(k => all.includes(k) && !seen.has(k) && seen.add(k)).slice(0,2);
@@ -493,8 +493,7 @@ function render(c, k){
   const works = vis(item.works || []);
   const groups = item.groups || [];
   const inG = w => !!w.g && groups.some(g => g.id===w.g);
-  const vids = works.filter(w => w.t==='video' && !inG(w));
-  const others = works.filter(w => w.t!=='video' && !inG(w));
+  const others = works.filter(w => !inG(w));   /* sem categoria: tudo junto, na ordem; nada é separado por tipo */
   crumbs.innerHTML = `<button type="button" data-go="">Portfólio</button><span aria-hidden="true">›</span>` +
     (k ? `<button type="button" data-go="${c.id}">${esc(c.name||'Projeto')}</button><span aria-hidden="true">›</span><span aria-current="page">${esc(k.name||'Projeto')}</span>`
        : `<span aria-current="page">${esc(c.name||'Projeto')}</span>`);
@@ -510,8 +509,7 @@ function render(c, k){
     <div class="chips">${chipsHTML(item)}</div>
     ${AD()?AD().head(item, !!k):''}
     ${layoutRows(item, !!k).map(row => {
-      const h = row.map(key => key==='p' ? subs : key==='v' ? section(item.secV||'Vídeos', vids, true, 'v')
-        : key==='d' ? section(item.secD||(vids.length ? 'Design e materiais' : 'Trabalhos'), others, false, 'd')
+      const h = row.map(key => key==='p' ? subs : key==='d' ? section(item.secD||'Trabalhos', others, false, 'd')
         : (g => g ? section(g.name||'Categoria', works.filter(w => w.g===g.id), false, g.id, true) : '')(groups.find(g => g.id===key))).filter(Boolean);
       return h.length>1 ? `<div class="secrow">${h.join('')}</div>` : h.join('');
     }).join('')}`;
