@@ -91,6 +91,8 @@ body.pf-sel .tile video{pointer-events:none}
 .slide .bt .pf-btn{padding:3px 8px;font-size:.78rem}
 .viewer{position:relative;margin:12px auto 0;background:#000;border-radius:12px;overflow:hidden}
 .viewer img{width:100%;height:100%;object-fit:cover;display:block}
+.slide .im video,.viewer video{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;background:#000}
+.slide .im .vb{position:absolute;right:5px;bottom:5px;background:rgba(20,0,26,.85);border-radius:99px;font-size:.66rem;font-weight:700;padding:1px 7px}
 .viewer .nv{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;border:0;background:rgba(255,243,252,.9);color:#2b0034;font-size:1.2rem;cursor:pointer}
 .viewer .nv.l{left:8px}.viewer .nv.r{right:8px}
 .viewer .dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:5px}
@@ -770,7 +772,7 @@ function portfolioPhotos() {
     for (const it of [c, ...(c.children || [])]) {
       const g = { name: (it === c ? c.name : (c.name ? c.name + ' › ' : '') + it.name) || 'Sem nome', photos: [] };
       if (it === c) add(g, c.cover);
-      for (const w of it.works || []) { if (w.canva) continue; if (w.t === 'carousel') (w.images || []).forEach(u => add(g, u)); else if (w.t !== 'video') add(g, w.src); }
+      for (const w of it.works || []) { if (w.canva) continue; if (w.t === 'carousel') (w.images || []).forEach((u, k) => { if (!(w.kinds && w.kinds[k] === 'v')) add(g, u); }); else if (w.t !== 'video') add(g, w.src); }
       if (g.photos.length) groups.push(g);
     }
   }
@@ -809,21 +811,21 @@ function photoPicker(taken) {
 }
 
 /* ---------- editor de carrossel ---------- */
-/* work = null (novo) ou o trabalho existente. Devolve { title, ratio, images:[endereços] } ou null */
+/* work = null (novo) ou o trabalho existente. Devolve { title, ratio, images:[endereços], kinds:['i'|'v'] } ou null */
 function carouselEditor(work) {
   return new Promise(resolve => {
     const sh = shell('wide'); const box = sh.box;
     const h = document.createElement('h3'); h.textContent = work ? 'Editar carrossel' : 'Novo carrossel'; box.append(h);
-    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Adicione as fotos, arraste (ou use as setas) para mudar a ordem e use ✂ para recortar cada uma. Só salva quando você clicar em Salvar carrossel.'; box.append(p0);
+    const p0 = document.createElement('p'); p0.className = 'msg'; p0.textContent = 'Adicione fotos, GIFs e vídeos, arraste (ou use as setas) para mudar a ordem e use ✂ para recortar cada foto. Vídeos aparecem inteiros, sem recorte. Só salva quando você clicar em Salvar carrossel.'; box.append(p0);
     let ratio = work ? work.r : '4/5', uid = 0, selId = null, ratioChanged = false;
-    let slides = (work && work.images || []).map(src => ({ id: ++uid, src, url: src, file: null, blob: null, gif: false }));
+    let slides = (work && work.images || []).map((src, k) => ({ id: ++uid, src, url: src, file: null, blob: null, gif: false, video: !!(work.kinds && work.kinds[k] === 'v') }));
     const title = document.createElement('input'); title.type = 'text'; title.maxLength = 120; title.value = work ? work.title : '';
     box.append(mkLabel('Título (opcional)', null, title));
     const sel = document.createElement('select');
     for (const [v, l] of RATIOS) { const o = document.createElement('option'); o.value = v; o.textContent = l; if (v === ratio) o.selected = true; sel.append(o); }
     if (![...sel.options].some(o => o.value === ratio)) { const o = document.createElement('option'); o.value = ratio; o.textContent = ratio.replace('/', ':'); o.selected = true; sel.prepend(o); }
     box.append(mkLabel('Formato das fotos do carrossel', 'Todas as fotos usam o mesmo formato (como no Instagram). O mais comum é 4:5 ou quadrado.', sel));
-    const addBtn = mkBtn('+ Adicionar fotos do computador', 'primary');
+    const addBtn = mkBtn('+ Adicionar fotos e vídeos do computador', 'primary');
     const libBtn = mkBtn('Usar fotos que já estão no portfólio');
     const bar = document.createElement('div'); bar.style.cssText = 'margin-top:14px;display:flex;gap:10px;flex-wrap:wrap'; bar.append(addBtn, libBtn); box.append(bar);
     const list = document.createElement('div'); list.className = 'slides'; box.append(list);
@@ -836,11 +838,11 @@ function carouselEditor(work) {
       slides.forEach((s, i) => {
         const el = document.createElement('div'); el.className = 'slide' + (s.id === selId ? ' sel' : ''); el.draggable = true;
         const im = document.createElement('div'); im.className = 'im'; im.style.aspectRatio = ratio;
-        const img = document.createElement('img'); img.src = showUrl(s); const num = document.createElement('em'); num.textContent = i + 1; im.append(img, num);
+        const img = s.video && !s.file ? Object.assign(document.createElement('video'), { src: showUrl(s) + '#t=0.1', muted: true, preload: 'metadata' }) : s.video ? Object.assign(document.createElement('video'), { src: showUrl(s), muted: true, preload: 'metadata' }) : document.createElement('img'); if (!s.video) img.src = showUrl(s); const num = document.createElement('em'); num.textContent = i + 1; im.append(img, num); if (s.video) { const vb = document.createElement('span'); vb.className = 'vb'; vb.textContent = '▶ vídeo'; im.append(vb); }
         im.onclick = () => { selId = s.id; draw(); };
         const bt = document.createElement('div'); bt.className = 'bt';
         const l = mkBtn('←', '', () => move(i, -1)), r = mkBtn('→', '', () => move(i, 1)), c = mkBtn('✂', '', () => recrop(s)), x = mkBtn('✕', 'danger', () => { slides.splice(i, 1); if (selId === s.id) selId = null; draw(); });
-        l.disabled = i === 0; r.disabled = i === slides.length - 1; c.title = 'Recortar e reposicionar'; x.title = 'Tirar do carrossel'; if (s.gif) c.hidden = true;
+        l.disabled = i === 0; r.disabled = i === slides.length - 1; c.title = 'Recortar e reposicionar'; x.title = 'Tirar do carrossel'; if (s.gif || s.video) c.hidden = true;
         bt.append(l, c, r, x); el.append(im, bt);
         el.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); el.classList.add('drag'); };
         el.ondragend = () => el.classList.remove('drag');
@@ -859,7 +861,7 @@ function carouselEditor(work) {
       const idx = selId ? Math.max(0, slides.findIndex(s => s.id === selId)) : Math.min(vi, slides.length - 1); vi = idx;
       const lab = document.createElement('div'); lab.className = 'crop-hint'; lab.textContent = 'Prévia: como a pessoa vai ver ao clicar na foto (setinhas para passar)'; lab.style.marginTop = '16px';
       const v = document.createElement('div'); v.className = 'viewer'; v.style.aspectRatio = ratio; v.style.width = Math.min(300, 260 * Math.max(1, ratioNum(ratio))) + 'px';
-      const img = document.createElement('img'); img.src = showUrl(slides[idx]); v.append(img);
+      const cs = slides[idx]; const img = cs.video ? Object.assign(document.createElement('video'), { src: showUrl(cs) + (cs.file ? '' : '#t=0.1'), muted: true, preload: 'metadata' }) : document.createElement('img'); if (!cs.video) img.src = showUrl(cs); v.append(img);
       if (slides.length > 1) {
         const pv = mkBtn('‹', ''); pv.className = 'nv l'; pv.onclick = () => { selId = slides[(idx - 1 + slides.length) % slides.length].id; draw(); };
         const nx = mkBtn('›', ''); nx.className = 'nv r'; nx.onclick = () => { selId = slides[(idx + 1) % slides.length].id; draw(); };
@@ -880,10 +882,10 @@ function carouselEditor(work) {
       draw();
     };
     addBtn.onclick = async () => {
-      const files = await pickFiles('image/*', true);
+      const files = await pickFiles(VIDEO_ACCEPT, true);
       for (const f of files) {
-        if (!f.type.startsWith('image/')) continue;
-        slides.push({ id: ++uid, src: null, file: f, url: URL.createObjectURL(f), blob: null, gif: f.type === 'image/gif' });
+        const isImg = f.type.startsWith('image/');
+        slides.push({ id: ++uid, src: null, file: f, url: URL.createObjectURL(f), blob: null, gif: f.type === 'image/gif', video: !isImg });
       }
       draw();
     };
@@ -906,15 +908,17 @@ function carouselEditor(work) {
       if (!slides.length) { err.textContent = 'Adicione pelo menos uma foto.'; return; }
       ok.disabled = true; ok.textContent = 'Enviando…';
       try {
-        const images = []; let n = 0; const need = s => s.file || s.blob || s.recrop || (ratioChanged && s.src); const total = slides.filter(need).length;
+        const images = [], kinds = []; let n = 0; const need = s => s.video ? !!s.file : (s.file || s.blob || s.recrop || (ratioChanged && s.src)); const total = slides.filter(need).length;
         for (const s of slides) {
-          if (!need(s)) { images.push(s.src); continue; }
-          n++; const label = `Enviando foto ${n} de ${total}`;
+          if (!need(s)) { images.push(s.src); kinds.push(s.video ? 'v' : 'i'); continue; }
+          n++; const label = `Enviando ${s.video ? 'vídeo' : 'foto'} ${n} de ${total}`;
+          kinds.push(s.video ? 'v' : 'i');
+          if (s.video) { const vf = await prepareVideo(s.file); images.push(await sendBlob(vf, vf.name, /\.webm$/i.test(vf.name) ? 'video/webm' : 'video/mp4', label)); continue; }
           if (s.gif && s.file && !s.blob) { images.push(await sendBlob(await gifLoop(s.file), s.file.name, 'image/gif', label)); continue; }
           const pre = s.blob || await autoCrop(s.file || s.src, ratio);
           images.push(await sendBlob(pre.blob, 'carrossel.jpg', pre.type, label));
         }
-        done({ title: title.value.trim(), ratio, images });
+        done({ title: title.value.trim(), ratio, images, kinds });
       } catch (ex) { err.textContent = ex.message; ok.disabled = false; ok.textContent = 'Salvar carrossel'; }
     };
     draw();
@@ -1354,7 +1358,7 @@ const actions = {
   async 'add-carousel'(id, _i, _d, g) {
     const it = findItem(id); if (!it) return;
     const r = await carouselEditor(null); if (!r) return;
-    (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images, ...(g ? { g } : {}) });
+    (it.works = it.works || []).push({ t: 'carousel', title: r.title, r: r.ratio, images: r.images, ...(r.kinds.includes('v') ? { kinds: r.kinds } : {}), ...(g ? { g } : {}) });
     PF.refresh(); await save();
   },
   async 'pick-poster'(id, i) {
@@ -1454,7 +1458,7 @@ const actions = {
     if (w.t === 'carousel') {
       const r = await carouselEditor(w); if (!r) return;
       const old = (w.images || []).filter(u => !r.images.includes(u)).flatMap(mediaOf);
-      w.title = r.title; w.r = r.ratio; w.images = r.images;
+      w.title = r.title; w.r = r.ratio; w.images = r.images; if (r.kinds.includes('v')) w.kinds = r.kinds; else delete w.kinds;
       PF.refresh(); await save(); dropMedia(old); return;
     }
     const f = [{ key: 'title', label: 'Título (opcional)', value: w.title, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: w.r }];

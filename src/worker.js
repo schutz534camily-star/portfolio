@@ -107,6 +107,7 @@ function cleanWork(w) {
     if (!Array.isArray(w.images)) throw new Error('carrossel inválido');
     if (!w.images.every(okSrc)) throw new Error('arquivo inválido no carrossel');
     out.images = w.images;
+    if (Array.isArray(w.kinds) && w.kinds.length === w.images.length && w.kinds.every(k => k === 'i' || k === 'v') && w.kinds.includes('v')) out.kinds = w.kinds;
     return out;
   }
   if (w.src) { if (!okSrc(w.src)) throw new Error('arquivo inválido'); out.src = w.src; }
