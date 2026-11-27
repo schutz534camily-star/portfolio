@@ -615,6 +615,8 @@ function lbShow(i){
   $('#lb-count').hidden = lbS.length<2;
   lbRatio();
   lbTrack.querySelectorAll('video').forEach(v => { const k = Number(v.dataset.k); if(k!==lbI && !v.paused) v.pause(); if(Math.abs(k-lbI)<=1 && v.preload==='none') v.preload = 'metadata'; });
+  const cur = lbTrack.querySelector(`video[data-k="${lbI}"]`);
+  if(cur && !lb.hidden){ cur.preload = 'auto'; const p = cur.play(); if(p && p.catch) p.catch(() => { cur.muted = true; const q = cur.play(); if(q && q.catch) q.catch(()=>{}); }); }
 }
 function lbOpen(slides, start){
   lbS = slides; if(!lbS.length) return;
