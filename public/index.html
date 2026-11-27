@@ -605,7 +605,7 @@ addEventListener('hashchange', route);
 const lb = $('#lb'), lbTrack = $('#lb-track'), lbStage = $('#lb-stage');
 let lbS = [], lbI = 0, lbOpener = null;
 function parseR(v){ if(typeof v==='number') return v||1; v = String(v||''); if(v.includes('/')){ const [a,b] = v.split('/').map(Number); return (a/b)||1; } return Number(v)||1; }
-function lbRatio(){ const s = lbS[lbI]; lbStage.style.setProperty('--lr', Math.min(3, Math.max(.4, s ? s.lr : 1)).toFixed(4)); }
+function lbRatio(){ const s = lbS[lbI]; lbStage.style.setProperty('--lr', Math.min(5, Math.max(.2, s ? s.lr : 1)).toFixed(4)); }
 function lbShow(i){
   lbI = Math.max(0, Math.min(lbS.length-1, i));
   lbTrack.style.transform = `translateX(${-100*lbI}%)`;
@@ -685,7 +685,7 @@ pbody.addEventListener('play', e => { const v = e.target; if(v.dataset && v.data
 /* o quadro do vídeo acompanha a proporção real do arquivo (nada cortado) */
 pbody.addEventListener('loadedmetadata', e => {
   const v = e.target; if(!v.videoWidth || !v.videoHeight || !v.closest) return;
-  const a = v.closest('.art'); if(a) a.style.setProperty('--r', Math.min(3, Math.max(.4, v.videoWidth / v.videoHeight)).toFixed(4));
+  const a = v.closest('.art'); if(a) a.style.setProperty('--r', Math.min(5, Math.max(.2, v.videoWidth / v.videoHeight)).toFixed(4));
 }, true);
 function zoomImg(img){ const f = img.closest('[data-wi]'); if(f) openGallery(f); }
 pbody.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('img[data-zoom]')){ e.preventDefault(); zoomImg(e.target); } });

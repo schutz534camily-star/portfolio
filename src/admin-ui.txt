@@ -328,6 +328,14 @@ function modal({ title, message, fields = [], ok = 'Salvar', danger = false, can
 const confirmBox = (title, message, ok = 'Excluir') => modal({ title, message, ok, danger: true }).then(v => !!v);
 
 /* ---------- arquivos ---------- */
+/* proporção exata do arquivo (ex.: 1920/817), reduzida; vale para qualquer formato fora do comum */
+function exactRatio(w, h) {
+  if (!w || !h) return '16/9';
+  const g = (a, b) => b ? g(b, a % b) : a; let a = Math.round(w), b = Math.round(h); const d = g(a, b); a /= d; b /= d;
+  while (a > 9999 || b > 9999) { a = Math.max(1, Math.round(a / 2)); b = Math.max(1, Math.round(b / 2)); }
+  return a + '/' + b;
+}
+const ratioOpts = cur => RATIOS.some(o => o[0] === cur) || !cur ? RATIOS : [[cur, 'Original (' + cur.replace('/', ':') + ')'], ...RATIOS];
 const RATIOS = [['9/16', 'Vertical (9:16)'], ['16/9', 'Horizontal (16:9)'], ['4/5', 'Retrato (4:5)'], ['1/1', 'Quadrado (1:1)'], ['4/3', 'Horizontal clássico (4:3)'], ['3/4', 'Retrato (3:4)']];
 function nearestRatio(w, h) {
   const q = w / h; let best = '1/1', d = 9;
@@ -355,16 +363,16 @@ async function prepareImage(file) {
   if (!bmp) throw new Error('Não consegui abrir a imagem "' + file.name + '".');
   const w = bmp.width, h = bmp.height, scale = Math.min(1, 1800 / Math.max(w, h));
   const small = file.type === 'image/gif' || (file.type === 'image/png' && file.size < 1.5e6) || (scale === 1 && file.size < 1.2e6);
-  if (small) return { blob: file, type: file.type, ratio: nearestRatio(w, h) };
+  if (small) return { blob: file, type: file.type, ratio: exactRatio(w, h) };
   const c = document.createElement('canvas'); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
   const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0, c.width, c.height);
   const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .86));
-  return { blob, type: 'image/jpeg', ratio: nearestRatio(w, h) };
+  return { blob, type: 'image/jpeg', ratio: exactRatio(w, h) };
 }
 function videoRatio(file) {
   return new Promise(resolve => {
     const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; const u = URL.createObjectURL(file);
-    v.onloadedmetadata = () => { const r = v.videoWidth ? nearestRatio(v.videoWidth, v.videoHeight) : '16/9'; URL.revokeObjectURL(u); resolve(r); };
+    v.onloadedmetadata = () => { const r = v.videoWidth ? exactRatio(v.videoWidth, v.videoHeight) : '16/9'; URL.revokeObjectURL(u); resolve(r); };
     v.onerror = () => { URL.revokeObjectURL(u); resolve('16/9'); };
     v.src = u;
   });
@@ -733,7 +741,7 @@ function cropDialog({ source, ratio = '1/1', ratios = null, fixed = false, kind 
     sh.ent.cancel = () => finish(null);
     const ok = mkBtn('Aplicar recorte', 'primary', null, 'submit');
     if (allBox) allBox.onchange = () => { ok.textContent = allBox.checked ? 'Publicar todas sem recortar' : 'Aplicar recorte'; p0.textContent = allBox.checked ? 'Todas as fotos ficam neste formato, inteiras (sem cortar nada), e são publicadas direto, sem abrir o recorte de cada uma.' : 'Arraste a foto para reposicionar e use o zoom. O que está dentro da moldura é o que vai aparecer.'; };
-    box.append(row(mkBtn('Cancelar', '', () => finish(null)), ...(allowSkip ? [mkBtn('Usar sem recortar', '', () => finish({ skipped: true }))] : []), ok));
+    box.append(row(mkBtn('Cancelar', '', () => finish(null)), ...(allowSkip ? [mkBtn('Usar sem recortar (tamanho original)', '', () => finish({ skipped: true }))] : []), ok));
     box.onsubmit = async e => {
       e.preventDefault(); ok.disabled = true;
       if (allBox && allBox.checked) return finish({ allNoCrop: true, ratio: cur });
@@ -1462,7 +1470,7 @@ const actions = {
       w.title = r.title; w.r = r.ratio; w.images = r.images; if (r.kinds.includes('v')) w.kinds = r.kinds; else delete w.kinds;
       PF.refresh(); await save(); dropMedia(old); return;
     }
-    const f = [{ key: 'title', label: 'Título (opcional)', value: w.title, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: RATIOS, value: w.r }];
+    const f = [{ key: 'title', label: 'Título (opcional)', value: w.title, max: 120 }, { key: 'r', label: 'Formato do quadro', type: 'select', options: ratioOpts(w.r), value: w.r }];
     if (w.canva) f.splice(1, 0, { key: 'url', label: 'Link do Canva', type: 'url', value: w.canva, required: true });
     const v = await modal({ title: 'Editar trabalho', fields: f }); if (!v) return;
     w.title = v.title; w.r = v.r; if (w.canva && /^https:\/\//.test(v.url)) w.canva = v.url;

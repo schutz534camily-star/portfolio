@@ -94,7 +94,7 @@ const noteFail = (env, ip) => env.DB.prepare('INSERT INTO attempts (ip, ts) VALU
 
 /* ---------- validação do conteúdo ---------- */
 const SRC_OK = /^(\/media\/[a-f0-9]{16}|(videos|images)\/[A-Za-z0-9._\-\/]{1,120})$/;
-const RATIO_OK = /^\d{1,2}\/\d{1,2}$/;
+const RATIO_OK = /^[1-9]\d{0,3}\/[1-9]\d{0,3}$/;
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 const okSrc = v => typeof v === 'string' && SRC_OK.test(v) && !v.includes('..');
